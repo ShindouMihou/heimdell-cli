@@ -1,12 +1,15 @@
 import type {Argv} from "yargs";
 import {createHeimdellClient} from "../api/client.ts";
-import {Box, render} from "ink";
+import {render} from "ink";
 import {useEffect, useState} from "react";
 import LoginIntroduction from "./pages/login/LoginIntroduction.tsx";
 import EnterServerAddress from "./pages/login/LoginEnterServerAddress.tsx";
 import LoginEnterUsername from "./pages/login/LoginEnterUsername.tsx";
 import LoginEnterPassword from "./pages/login/LoginEnterPassword.tsx";
 import LoginStatus from "./pages/login/LoginStatus.tsx";
+import Border from "../components/Border.tsx";
+import LoginEnterProjectTag from "./pages/login/LoginEnterProjectTag.tsx";
+import LoginSelectPlatforms from "./pages/login/LoginSelectPlatforms.tsx";
 
 function LoginComponent() {
     const [page, setPage] = useState(0);
@@ -14,12 +17,14 @@ function LoginComponent() {
     const [serverAddress, setServerAddress] = useState("");
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [tag, setTag] = useState("");
+    const [platforms, setPlatforms] = useState<("android" | "ios")[]>([]);
 
     const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (page === 4) {
+        if (page === 6) {
             async function login() {
                 setStatus("loading");
                 setError(null);
@@ -31,7 +36,9 @@ function LoginComponent() {
                         const credentialsContent = JSON.stringify({
                             baseUrl: serverAddress,
                             username,
-                            password
+                            password,
+                            tag,
+                            platforms
                         });
 
                         const gitignoreContents = [
@@ -62,18 +69,7 @@ function LoginComponent() {
     }, [page]);
 
     return (
-        <Box
-            flexDirection={"column"}
-            padding={1}
-            borderStyle={"doubleSingle"}
-            borderColor={"blue"}
-            borderTop={true}
-            borderBottom={true}
-            borderLeft={true}
-            borderRight={true}
-            width={"50%"}
-            gap={1}
-        >
+        <Border>
             {page === 0 && <LoginIntroduction
                 onConfirm={() => setPage(1)}
             />}
@@ -96,8 +92,20 @@ function LoginComponent() {
                     setPage(4);
                 }}
             />}
-            {page === 4 && <LoginStatus status={status} error={error}/>}
-        </Box>
+            {page === 4 && <LoginEnterProjectTag
+                onSubmit={(tag) => {
+                    setTag(tag);
+                    setPage(5);
+                }}
+            />}
+            {page === 5 && <LoginSelectPlatforms
+                onSubmit={(platforms) => {
+                    setPlatforms(platforms as ("android" | "ios")[]);
+                    setPage(6);
+                }}
+            />}
+            {page === 6 && <LoginStatus status={status} error={error}/>}
+        </Border>
     )
 }
 

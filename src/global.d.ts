@@ -3,5 +3,7 @@ declare module globalThis {
         username: string;
         password: string;
         baseUrl: string;
+        tag: string;
+        platforms: ("android"|"ios")[];
     } | undefined;
 }

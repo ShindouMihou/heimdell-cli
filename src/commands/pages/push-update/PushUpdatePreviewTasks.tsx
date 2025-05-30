@@ -1,21 +1,26 @@
 import {Box, Text} from "ink";
 import {ConfirmInput, UnorderedList} from "@inkjs/ui";
 import Border from "../../../components/Border.tsx";
+import type {JsRuntime} from "../../../scripts/runtime.ts";
+import {installPackagesScript} from "../../../scripts/package-manager.ts";
 
-export default function PushUpdatePreviewTasks(props: { onConfirm: () => void }) {
+export default function PushUpdatePreviewTasks(props: {
+    runtime: JsRuntime,
+    onConfirm: () => void
+}) {
 
     return (
         <Border borderColor={"blue"} width={"40%"}>
             <Text color={"magentaBright"} bold={true}>TASK LIST</Text>
             <Text italic={true}>
-                Heimdall will perform the following tasks before pushing the update:
+                Heimdell will perform the following tasks before pushing the update:
             </Text>
             <UnorderedList>
                 <UnorderedList.Item>
-                    <Text>Run <Text bold={true}>npm install</Text> to ensure all dependencies are up-to-date.</Text>
+                    <Text>Run <Text bold={true}>{installPackagesScript.using(props.runtime)}</Text> to ensure all dependencies are up-to-date.</Text>
                 </UnorderedList.Item>
                 <UnorderedList.Item>
-                    <Text>Run <Text bold={true}>react-native bundle</Text> to create the JavaScript bundle for the following platforms:</Text>
+                    <Text>Run <Text bold={true}>react-native bundle</Text> to create the Hermes JavaScript bundle for the following platforms:</Text>
                     <UnorderedList>
                         {globalThis.credentials?.platforms?.map((platform) => (
                             <UnorderedList.Item key={platform}>
@@ -28,7 +33,7 @@ export default function PushUpdatePreviewTasks(props: { onConfirm: () => void })
                     <Text>Run <Text bold={true}>react-native asset</Text> to prepare assets for the update.</Text>
                 </UnorderedList.Item>
                 <UnorderedList.Item>
-                    <Text>Push the update to Heimdall server.</Text>
+                    <Text>Push the update to Heimdell server.</Text>
                 </UnorderedList.Item>
             </UnorderedList>
             <Box>

@@ -4,7 +4,7 @@ import {MultiSelect} from "@inkjs/ui";
 export default function LoginSelectPlatforms(props: { onSubmit: (values: string[]) => void }) {
     return (
         <>
-            <Text bold={true} color={"magentaBright"}>LOGIN WITH HEIMDALL</Text>
+            <Text bold={true} color={"magentaBright"}>LOGIN WITH HEIMDELL</Text>
             <Text italic={true}>
                 Specify which platforms your project supports, this will be saved locally on your project and
                 will be used to help us determine which platforms to automatically bundle every release.

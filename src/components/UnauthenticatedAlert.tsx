@@ -10,7 +10,7 @@ export default function UnauthenticatedAlert() {
         >
             <Text bold={true} color={"redBright"}>UNAUTHENTICATED</Text>
             <Text italic={true}>
-                Login with Heimdall for this project by using the command <Text bold={true}>heimdall login </Text>
+                Login with Heimdell for this project by using the command <Text bold={true}>heimdell login </Text>
                 before you can use this command.
             </Text>
         </Border>

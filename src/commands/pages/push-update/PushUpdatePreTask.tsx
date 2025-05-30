@@ -7,9 +7,11 @@ import * as os from "node:os";
 import type { Command } from "../../../types/command";
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 
+const MAX_LOG_LINES = 5;
+
 type PushUpdatePreTaskProps = {
     command: Command,
-    onComplete: () => void
+    onComplete: () => void | Promise<void>
 };
 
 export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
@@ -18,9 +20,14 @@ export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
     const [error, setError] = useState<string | null>(null);
     const childProcessRef = useRef<ChildProcessWithoutNullStreams | null>(null);
 
-    const confirm = () => setStatus("running");
+    const [isCompletionAcknowledged, setIsCompletionAcknowledged] = useState(false);
+
+    const handleConfirmPermission = () => setStatus("running");
 
     const platformSpecificCommand = useMemo(() => {
+        if (typeof props.command === "string") {
+            return props.command;
+        }
         const platform = os.platform();
         if (platform === "darwin") return props.command.darwin;
         if (platform === "win32") return props.command.win32;
@@ -37,49 +44,57 @@ export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
         setError(null);
 
         try {
-            const child = spawn(platformSpecificCommand, [], { shell: true });
+            const child = spawn(platformSpecificCommand, [], { shell: true, stdio: 'pipe' });
             childProcessRef.current = child;
 
             child.stdout.on('data', (data: Buffer) => {
-                setLogs(prevLogs => [...prevLogs, ...data.toString().trim().split('\n')]);
+                const newLines = data.toString().trim().split('\n').filter(Boolean);
+                if (newLines.length > 0) {
+                    setLogs(prevLogs => [...prevLogs, ...newLines].slice(-MAX_LOG_LINES));
+                }
             });
 
             child.stderr.on('data', (data: Buffer) => {
-                setLogs(prevLogs => [...prevLogs, ...data.toString().trim().split('\n').map(line => `STDERR: ${line}`)]);
+                const newLines = data.toString().trim().split('\n').filter(Boolean).map(line => `STDERR: ${line}`);
+                if (newLines.length > 0) {
+                    setLogs(prevLogs => [...prevLogs, ...newLines].slice(-MAX_LOG_LINES));
+                }
             });
 
             child.on('error', (spawnError: Error) => {
-                setError(`Failed to start command: ${spawnError.message}`);
-                setLogs(prevLogs => [...prevLogs, `Failed to start command: ${spawnError.message}`]);
+                const errorMessage = `Failed to start command: ${spawnError.message}`;
+                setError(errorMessage);
+                setLogs(prevLogs => [...prevLogs, errorMessage].slice(-MAX_LOG_LINES));
                 setStatus("error");
-                childProcessRef.current = null;
+                if (childProcessRef.current === child) {
+                    childProcessRef.current = null;
+                }
             });
 
             child.on('close', (code: number | null, signal: NodeJS.Signals | null) => {
                 if (childProcessRef.current === child) {
                     childProcessRef.current = null;
-                    if (status === "killed") {
-                        return;
-                    }
                     if (code === 0) {
-                        setLogs(prevLogs => [...prevLogs, "Command completed successfully."]);
+                        setLogs(prevLogs => [...prevLogs, "Command completed successfully."].slice(-MAX_LOG_LINES));
                         setStatus("done");
-                        props.onComplete();
                     } else {
                         const exitMessage = `Command exited with ${code !== null ? `code ${code}` : `signal ${signal}`}`;
                         setError(exitMessage);
-                        setLogs(prevLogs => [...prevLogs, exitMessage]);
+                        setLogs(prevLogs => [...prevLogs, exitMessage].slice(-MAX_LOG_LINES));
                         setStatus("error");
                     }
                 }
             });
 
         } catch (e: any) {
-            setError(e?.message ?? "Unknown error setting up command execution.");
+            const errorMessage = e?.message ?? "Unknown error setting up command execution.";
+            setError(errorMessage);
+            setLogs(prevLogs => [...prevLogs, errorMessage].slice(-MAX_LOG_LINES))
             setStatus("error");
-            childProcessRef.current = null; // Ensure ref is cleared on setup error
+            childProcessRef.current = null;
         }
-    }, [platformSpecificCommand, setLogs, setError, setStatus, props.onComplete, status]); // Added status to deps for timeout logic check
+    }, [platformSpecificCommand]);
+
 
     useEffect(() => {
         let timeoutId: NodeJS.Timeout | null = null;
@@ -88,13 +103,21 @@ export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
             runCommand();
 
             timeoutId = setTimeout(() => {
-                if (childProcessRef.current && status === "running") {
-                    setLogs((prev) => [...prev, "Killing process due to timeout (10s)."]);
-                    childProcessRef.current.kill('SIGTERM');
-                    setStatus("killed");
-                    setError("Process killed due to timeout.");
-                    childProcessRef.current = null;
-                }
+                setStatus(currentStatus => {
+                    if (currentStatus === "running" && childProcessRef.current) {
+                        const procToKill = childProcessRef.current;
+                        childProcessRef.current = null;
+
+                        const timeoutMessage = "Killing process due to timeout (10s).";
+                        setLogs((prev) => [...prev, timeoutMessage].slice(-MAX_LOG_LINES));
+
+                        procToKill.kill('SIGTERM');
+
+                        setError("Process killed due to timeout.");
+                        return "killed";
+                    }
+                    return currentStatus;
+                });
             }, 10 * 1000);
         }
 
@@ -103,12 +126,29 @@ export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
                 clearTimeout(timeoutId);
             }
             if (childProcessRef.current) {
-                setLogs(prev => [...prev, "Process being cleaned up..."]);
+                setLogs((prev) => [...prev, "Cleaning up active command (unmount/status change)..."].slice(-MAX_LOG_LINES));
                 childProcessRef.current.kill('SIGTERM');
                 childProcessRef.current = null;
             }
         };
-    }, [status])
+    }, [status, runCommand]);
+
+
+    const handleCompletionConfirm = async () => {
+        setIsCompletionAcknowledged(true);
+        try {
+           props.onComplete();
+        } catch (e) {
+            setError(`Error during onComplete: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    };
+
+    const handleCancel = () => {
+        if (childProcessRef.current) {
+            childProcessRef.current.kill('SIGTERM');
+        }
+        process.exit(0);
+    };
 
     if (platformSpecificCommand == null) {
         return (
@@ -121,81 +161,87 @@ export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
         );
     }
 
-    if (status === "running" || status === "done" || status === "killed") {
+    if (status === "running" || status === "done" || status === "killed" || (status === "error" && platformSpecificCommand)) {
         return (
-            <Border borderColor={status === "done" ? "green" : (status === "killed" ? "yellow" : "blue")} width={"40%"}>
+            <Border
+                borderColor={
+                    status === "done" ? "green" :
+                        status === "killed" ? "yellow" :
+                            status === "error" ? "red" : "blue"
+                }
+                width={"40%"}
+            >
                 <Box gap={1}>
                     {status === "running" && <Spinner/>}
                     <Text color={"magentaBright"} bold={true}>
                         {status === "running" && "RUNNING COMMAND"}
                         {status === "done" && "COMMAND COMPLETED"}
                         {status === "killed" && "COMMAND KILLED (TIMEOUT)"}
+                        {status === "error" && "COMMAND FAILED"}
                     </Text>
                 </Box>
-                <Text italic={true}>
-                    Running the command to prepare the update...
-                </Text>
+
+                {status !== "error" && (
+                    <Text italic={true}>
+                        Running the command to prepare the update...
+                    </Text>
+                )}
+
                 <Text backgroundColor={"black"} color={"green"}>
                     {platformSpecificCommand}
                 </Text>
-                <Text>
-                    This might take a while, please be patient.
-                </Text>
+
+                {status === "running" && (
+                    <Text>
+                        This might take a while, please be patient.
+                    </Text>
+                )}
+
                 {log.length > 0 && (
                     <Border borderColor={"gray"} width={"100%"}>
-                        <Text color={"yellow"} italic={true}>LOGS</Text>
+                        <Text color={"yellow"} italic={true}>LOGS (last {MAX_LOG_LINES})</Text>
                         <Text backgroundColor={"black"} color={"green"}>
                             {log.join("\n")}
                         </Text>
                     </Border>
                 )}
+
                 {error && (
                     <Border borderColor={"red"} width={"100%"}>
-                        <Text color={"red"} italic={true}>ERROR</Text>
+                        <Text color={"red"} italic={true}>{status === "error" ? "ERROR DETAILS" : "ERROR"}</Text>
                         <Text backgroundColor={"black"} color={"red"}>
                             {error}
                         </Text>
                     </Border>
+                )}
+
+                {status === "done" && !isCompletionAcknowledged && (
+                    <Box marginTop={1}>
+                        <Text>
+                            This task is completed. To continue, please type <Text bold={true}>y</Text> and enter twice. (
+                        </Text>
+                        <ConfirmInput
+                            onConfirm={handleCompletionConfirm}
+                            onCancel={handleCancel}
+                        />
+                        <Text>
+                            )
+                        </Text>
+                    </Box>
+                )}
+                {status === "done" && isCompletionAcknowledged && (
+                    <Text color="cyan">Completion acknowledged. Waiting for next step or app exit...</Text>
                 )}
             </Border>
         );
     }
 
-    if (status === "error") {
-        return (
-            <Border borderColor={"red"} width={"40%"}>
-                <Box gap={1}>
-                    <Text color={"red"} bold={true}>COMMAND FAILED</Text>
-                </Box>
-                <Text backgroundColor={"black"} color={"green"}>
-                    {platformSpecificCommand}
-                </Text>
-                {log.length > 0 && (
-                    <Border borderColor={"gray"} width={"100%"}>
-                        <Text color={"yellow"} italic={true}>LOGS</Text>
-                        <Text backgroundColor={"black"} color={"green"}>
-                            {log.join("\n")}
-                        </Text>
-                    </Border>
-                )}
-                {error && (
-                    <Border borderColor={"red"} width={"100%"} marginTop={1}>
-                        <Text color={"red"} italic={true}>ERROR DETAILS</Text>
-                        <Text backgroundColor={"black"} color={"red"}>
-                            {error}
-                        </Text>
-                    </Border>
-                )}
-            </Border>
-        )
-    }
-
-
+    // Initial state: "ask-permission"
     return (
         <Border borderColor={"blue"} width={"40%"}>
             <Text color={"magentaBright"} bold={true}>PERMISSION TO RUN COMMAND</Text>
             <Text italic={true}>
-                Heimdall wants to run the following command ({os.platform()} variant) to prepare the update:
+                Heimdell wants to run the following command ({os.platform()} variant) to prepare the update:
             </Text>
             <Text backgroundColor={"black"} color={"green"}>{platformSpecificCommand}</Text>
             <Box>
@@ -203,9 +249,8 @@ export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
                     If you are okay with us running the command, please type <Text bold={true}>y</Text>. (
                 </Text>
                 <ConfirmInput
-                    onConfirm={confirm}
-                    submitOnEnter={true}
-                    onCancel={() => process.exit(0)}
+                    onConfirm={handleConfirmPermission}
+                    onCancel={handleCancel}
                 />
                 <Text>
                     )

@@ -4,7 +4,7 @@ import {PasswordInput, TextInput} from "@inkjs/ui";
 export default function LoginEnterUsername(props: { onSubmit: (username: string) => void }) {
     return (
         <>
-            <Text bold={true} color={"magentaBright"}>LOGIN WITH HEIMDALL</Text>
+            <Text bold={true} color={"magentaBright"}>LOGIN WITH HEIMDELL</Text>
             <Text italic={true}>
                 Please enter your Heimdell account credentials here.
                 This will be saved on your local machine, so you won't have to enter them again.

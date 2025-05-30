@@ -1,6 +1,6 @@
 import type {BunFile} from "bun";
 
-export const uploadBundleFile = async (baseUrl: string, id: string, android?: BunFile, ios?: BunFile) => {
+export const uploadBundleFile = async (id: string, android?: BunFile, ios?: BunFile) => {
     if (!android && !ios) {
         throw new Error("At least one platform must be provided for upload.");
     }
@@ -13,9 +13,14 @@ export const uploadBundleFile = async (baseUrl: string, id: string, android?: Bu
         formData.append('ios', ios)
     }
 
-    const response = await fetch(`${baseUrl}/api/v1/bundle/${id}/upload`, {
+    const credentials = globalThis.credentials!;
+
+    const response = await fetch(`${credentials.baseUrl}/api/v1/cli/bundle/${id}/upload`, {
         method: 'POST',
         body: formData,
+        headers: {
+            'Authorization': `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
+        }
     });
 
     if (response.ok) {

@@ -2,11 +2,16 @@
   "name": "heimdell-cli",
   "module": "src/index.ts",
   "type": "module",
-  "private": true,
   "devDependencies": {
     "@types/bun": "latest",
     "@types/react": "^19.1.6",
     "@types/yargs": "^17.0.33"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts"
+  },
+  "bin": {
+    "heimdell": "src/index.ts"
   },
   "peerDependencies": {
     "typescript": "^5"

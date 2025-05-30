@@ -11,8 +11,14 @@ import {bundleAndroidScript, bundleIosScript} from "../scripts/hermes.ts";
 import {installPackagesScript} from "../scripts/package-manager.ts";
 import {useRuntime} from "../hooks/useRuntime.ts";
 import PushUpdateCheckups from "./pages/push-update/PushUpdateCheckups.tsx";
+import PushUpdatePushProgress from "./pages/push-update/PushUpdatePushProgress.tsx";
 
-function PushUpdateCommand()  {
+function PushUpdateCommand(
+    { targetVersion, note }: {
+        targetVersion: string,
+        note: string | null
+    }
+)  {
     const [page, setPage] = useState(0);
 
     const {runtime, useRuntimeCommand} = useRuntime();
@@ -67,24 +73,64 @@ function PushUpdateCommand()  {
                     setPage(4);
                 }}/>
             )}
+            {page === 4 && (
+                <PushUpdatePushProgress
+                    targetVersion={targetVersion}
+                    note={note}
+                    onComplete={() => {}}
+                />
+            )}
         </>
     )
 }
 
+const semanticVersionRegex = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/gm;
+
 export const usePushUpdateCommand = (yargs: Argv) => {
     yargs.command(
-        'push-update',
+        'push-update <targetVersion>',
         'Pushes an update into Heimdell. ' +
         'This will run all the necessary React Native commands to create a bundle before pushing it to Heimdell.',
-        (yargs) => {},
-        async function () {
+        (yargs) => {
+            yargs.positional('targetVersion', {
+                alias: 'v',
+                type: 'string',
+                describe: 'The version for this bundle'
+            });
+            yargs.positional('note', {
+                alias: 'n',
+                type: 'string',
+                describe: 'A note for this bundle, e.g. "Bug fixes and performance improvements"'
+            })
+            yargs.check((argv) => {
+                if (!argv.targetVersion) {
+                    throw new Error('You must provide a target version for the update.');
+                }
+                if (!semanticVersionRegex.test(argv.targetVersion as string)) {
+                    throw new Error('Invalid version format. Please use semantic versioning (e.g., 1.0.0).');
+                }
+                if (argv.note && (argv.note as string).length > 100) {
+                    throw new Error('Note must be less than 100 characters.');
+                }
+                return true;
+            })
+            yargs.demandOption(['targetVersion'], 'You must provide a target version for the update.');
+        },
+        async function (args) {
+            const targetVersion = args.targetVersion as string;
+            const note = args.note as string;
             await autoloadCredentials();
             if (globalThis.credentials == null) {
                 render(<UnauthenticatedAlert/>)
                 return;
             }
 
-            render(<PushUpdateCommand/>)
+            render(
+                <PushUpdateCommand
+                    targetVersion={targetVersion}
+                    note={note}
+                />
+            )
         },
     )
 }

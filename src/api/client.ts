@@ -2,8 +2,9 @@ import {createClient, createHook, createRoute} from "@client.ts/core";
 import {updatesResource} from "./resources/v1/updates.ts";
 import {cliResource} from "./resources/v1/cli.ts";
 
-export const createHeimdellClient =
-    (baseUrl: string, auth: { username: string, password: string }) => createClient(baseUrl, {
+export const createHeimdellClient = () => {
+    const credentials = globalThis.credentials!;
+    return createClient(credentials.baseUrl, {
         updates: updatesResource,
         bundles: cliResource,
         auth: {
@@ -22,9 +23,10 @@ export const createHeimdellClient =
             createHook({
                 beforeRequest: (request) =>  request.merge({
                     headers: {
-                        'Authorization': `Basic ${btoa(`${auth.username}:${auth.password}`)}`
+                        'Authorization': `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
                     }
                 })
             })
         ]
     })
+}

@@ -118,7 +118,7 @@ export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
                     }
                     return currentStatus;
                 });
-            }, 10 * 1000);
+            }, 60 * 1000 * 10);
         }
 
         return () => {
@@ -236,7 +236,6 @@ export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
         );
     }
 
-    // Initial state: "ask-permission"
     return (
         <Border borderColor={"blue"} width={"40%"}>
             <Text color={"magentaBright"} bold={true}>PERMISSION TO RUN COMMAND</Text>

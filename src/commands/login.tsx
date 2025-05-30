@@ -29,7 +29,15 @@ function LoginComponent() {
                 setStatus("loading");
                 setError(null);
 
-                const heimdellClient = createHeimdellClient(serverAddress, { username, password });
+                globalThis.credentials = {
+                    baseUrl: serverAddress,
+                    username,
+                    password,
+                    tag,
+                    platforms
+                };
+
+                const heimdellClient = createHeimdellClient();
                 const response = await heimdellClient.auth.login();
                 if (response.statusCode >= 200 && response.statusCode <= 299) {
                     try {

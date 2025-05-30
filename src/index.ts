@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import {useLoginCommand} from "./commands/login.tsx";

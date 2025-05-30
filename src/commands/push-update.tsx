@@ -88,7 +88,7 @@ const semanticVersionRegex = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0
 
 export const usePushUpdateCommand = (yargs: Argv) => {
     yargs.command(
-        'push-update <targetVersion>',
+        'push-update <targetVersion> [note]',
         'Pushes an update into Heimdell. ' +
         'This will run all the necessary React Native commands to create a bundle before pushing it to Heimdell.',
         (yargs) => {

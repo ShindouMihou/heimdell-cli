@@ -1,4 +1,4 @@
-import {createResource, createRoute} from "@client.ts/core";
+import {createHook, createResource, createRoute} from "@client.ts/core";
 import type {ReserveBundle} from "../../types/reserve-bundle.ts";
 import type {Bundle, BundleArray} from "../../types/bundle.ts";
 
@@ -21,7 +21,7 @@ export const cliResource = createResource({
         }),
         list: createRoute<BundleArray>().dynamic((tag: string) => {
             return {
-                route: `GET /bundles/${tag}/list/`
+                route: `GET /bundles/${tag}/list`,
             }
         }),
     }

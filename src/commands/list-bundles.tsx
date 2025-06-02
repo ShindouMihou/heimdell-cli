@@ -36,7 +36,11 @@ function ListBundlesCommand() {
     }
 
     return (
-        <Table data={query.result!.data!}/>
+        <Table data={query.result!.data!.map(b => {
+            const formatted = ({...b, status: b.is_disposed ? "ROLLED BACK" : "AVAILABLE"});
+            delete formatted.is_disposed;
+            return formatted;
+        })}/>
     )
 }
 export const useListBundlesCommand = (yargs: Argv) => {

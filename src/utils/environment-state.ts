@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 
 const CURRENT_ENV_FILE = ".heimdell/.current-env";
 
@@ -45,6 +46,7 @@ export const getCurrentEnvironment = async (): Promise<string | null> => {
 
 /**
  * Create or update a symlink from source to target
+ * On Windows, falls back to copying if symlink creation fails
  */
 export const createSymlink = (source: string, target: string): void => {
     try {
@@ -70,8 +72,35 @@ export const createSymlink = (source: string, target: string): void => {
         
         // Create symlink - use relative path for portability
         const relativePath = path.relative(path.dirname(target), source);
-        fs.symlinkSync(relativePath, target);
+        
+        try {
+            // Try to create symlink first
+            fs.symlinkSync(relativePath, target, 'file');
+        } catch (symlinkError) {
+            // On Windows, symlinks might fail due to permissions
+            // Fall back to copying file as a workaround
+            if (os.platform() === 'win32') {
+                console.warn('Symlink creation failed on Windows, falling back to file copy');
+                fs.copyFileSync(source, target);
+            } else {
+                throw symlinkError;
+            }
+        }
     } catch (error) {
         throw new Error(`Failed to create symlink: ${error instanceof Error ? error.message : String(error)}`);
+    }
+};
+
+/**
+ * Check if the main credentials file is a symlink
+ */
+export const isUsingSymlinks = (): boolean => {
+    try {
+        if (!fs.existsSync(".heimdell/credentials.json")) {
+            return false;
+        }
+        return fs.lstatSync(".heimdell/credentials.json").isSymbolicLink();
+    } catch (error) {
+        return false;
     }
 };

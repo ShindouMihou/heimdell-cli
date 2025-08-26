@@ -8,7 +8,12 @@
     "@types/yargs": "^17.0.33"
   },
   "scripts": {
-    "start": "bun run src/index.ts"
+    "start": "bun run src/index.ts",
+    "build:darwin-arm64": "bun build --compile src/index.ts --outfile dist/heimdell-darwin-arm64 --define 'process.env.DEV=\"false\"'",
+    "build:darwin-x64": "bun build --compile --target bun-darwin-x64 src/index.ts --outfile dist/heimdell-darwin-x64 --define 'process.env.DEV=\"false\"'",
+    "build:linux-x64": "bun build --compile --target bun-linux-x64 src/index.ts --outfile dist/heimdell-linux-x64 --define 'process.env.DEV=\"false\"'",
+    "build:windows-x64": "bun build --compile --target bun-windows-x64 src/index.ts --outfile dist/heimdell-windows-x64.exe --define 'process.env.DEV=\"false\"'",
+    "build:all": "bun run build:darwin-arm64 && bun run build:darwin-x64 && bun run build:linux-x64 && bun run build:windows-x64"
   },
   "bin": {
     "heimdell": "src/index.ts"
@@ -26,5 +31,11 @@
     "ink": "^5.2.1",
     "react": "18.3.1",
     "yargs": "^18.0.0"
+  },
+  "engines": {
+    "bun": ">=1.2.5"
+  },
+  "patchedDependencies": {
+    "ink@5.2.1": "patches/ink@5.2.1.patch"
   }
 }

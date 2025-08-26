@@ -1,0 +1,81 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build macOS binaries (arm64 + x64)
+        run: |
+          bun run build:darwin-arm64
+          bun run build:darwin-x64
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-binaries
+          path: |
+            dist/heimdell-darwin-arm64
+            dist/heimdell-darwin-x64
+
+  build-linux-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build Linux and Windows binaries
+        run: |
+          bun run build:linux-x64
+          bun run build:windows-x64
+      - name: Upload Linux/Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-windows-binaries
+          path: |
+            dist/heimdell-linux-x64
+            dist/heimdell-windows-x64.exe
+
+  release:
+    needs: [build-macos, build-linux-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-binaries
+          path: dist
+      - name: Download Linux/Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-windows-binaries
+          path: dist
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          draft: false
+          prerelease: false
+          files: |
+            dist/heimdell-darwin-arm64
+            dist/heimdell-darwin-x64
+            dist/heimdell-linux-x64
+            dist/heimdell-windows-x64.exe
+

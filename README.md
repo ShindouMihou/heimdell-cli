@@ -1,103 +1,73 @@
-# heimdell-cli
+# Heimdell CLI
 
-A command-line interface tool for managing over-the-air (OTA) updates using [Heimdell](https://github.com/ShindouMihou/heimdell) and [react-native-ota-hot-update](https://github.com/vantuan88291/react-native-ota-hot-update).
+**Heimdell CLI** is the companion command-line tool for Heimdell, enabling fast over-the-air (OTA) updates for React Native apps via [react-native-ota-hot-update](https://github.com/vantuan88291/react-native-ota-hot-update).
 
-Use this tool to build, push, and manage updates for your React Native applications quickly and reliably.
+## ⚙️ How It Works
 
+Heimdell operates as a two-component system:
 
-## 🚀 Features
+1. CLI Tool (this repo): bundles your React Native app and uploads the output to a Heimdell server.
+2. Heimdell Server: stores and serves updates that your app downloads at runtime via [`react-native-ota-hot-update`](https://github.com/vantuan88291/react-native-ota-hot-update).
 
-* 🔐 Login and auto-authenticate with Heimdell servers
-* 📦 Push new OTA updates with full bundling support
-* 📋 List all deployed bundles
-* 🧯 Roll back to the previous stable update
+Your app checks for updates; the server returns metadata and assets prepared by this CLI.
 
+## 🚧 Project Status
 
-## 📦 Installation
+> Heimdell is currently under development.
 
-Clone the repository:
-```
-git clone https://github.com/ShindouMihou/heimdell-cli && cd heimdell-cli
-```
+Known limitations being worked on:
 
-Install dependencies:
-```
-bun install
-```
+- Image and asset references may not be fully resolved in the current bundling flow.
+- Incomplete support for apps using the new React Native architecture.
 
-Link the command-line tool:
-```
-bun link
-```
+## 🔧 Setup
 
-## 🛠 Usage
+> This CLI uses Bun as its runtime. Install Bun from https://bun.sh.
+
+### Option A: Download a Binary
+
+- Grab a prebuilt executable from GitHub Releases (tags starting with `v*`).
+- Place it on your PATH. On macOS/Linux, ensure it’s executable.
+- (LINUX/MAC) You may use the command `cp <downloaded-file> /usr/local/bin/heimdell` to copy it to a common location.
+
+### Option B: Build from Source
 
 ```bash
-heimdell <cmd> [args]
+bun install
+bun run build:all
 ```
 
-### Commands
+## ▶️ Usage
 
-#### 🔐 `heimdell login`
-
-Logs into Heimdell and saves your credentials for future use within the current project. It also saves project-specific preferences such as 
-what platforms to bundle and other details.
-
+Open the folder of the React Native project you want to bundle, 
+then run the command:
 ```bash
 heimdell login
 ```
 
-#### 📦 `heimdell push-update <targetVersion> [note]`
+It should create a `.heimdell/credentials.json` file in the current directory. 
+Never **EVER** commit this folder to version control.
 
-Bundles your React Native app and pushes the update to the Heimdell server. This will automatically create the bundle script 
-for your project depending on your chosen platforms during `login` and also depending on your system (windows-specific, Mac and Linux-specific scripts).
-
-* `targetVersion`: The version number the update is targeting (e.g., `1.0.1`)
-* `note` (optional): A short description of what the update includes.
-
+Then you can use the following commands:
 ```bash
-heimdell push-update 1.0.1 "Fix splash screen bug and update icons"
-```
+# Preview checks and push a new update bundle
+heimdell push-update <version>
 
-#### 📋 `heimdell list-bundles`
-
-Lists all bundles associated with your project that are registered in Heimdell.
-
-```bash
+# List bundles on the server
 heimdell list-bundles
-```
 
-#### 🧯 `heimdell rollback`
-
-Rolls back your app to the previous bundle version. This invalidates the previous bundle and makes your application 
-think that this is a new version, forcing all users to update to the previous bundle version.
-
-```bash
+# Roll back to a previous bundle
 heimdell rollback
 ```
 
-### Global Options
+All the commands will execute for the specific project in the current working directory, 
+and will run different commands, highlighted during execution, to bundle the app and upload it to the server.
 
-| Option      | Description                 |
-| ----------- | --------------------------- |
-| `--version` | Show CLI version            |
-| `--help`    | Show CLI usage/help message |
+Notes:
+- This CLI is Bun-specific and uses Bun APIs.
+- Ensure your React Native project is set up correctly for bundling.
 
-## 🗂 Configuration
+## 📚 Resources
 
-When you first run `login`, we store project-specific configuration under the `.heimdell` folder which should not be committed at all. This folder contains your credentials to the Heimdell service and leaking that credentials could lead to vulnerabilities and exploits in your application, such as, malicious actors pushing a bad update to your application, and so forth.
-
-## 📌 Requirements
-
-* A React Native project configured for [react-native-ota-hot-update](https://github.com/vantuan88291/react-native-ota-hot-update)
-* Heimdell server must be up and running
-* [Bun](bun.sh)
-
-## 📚 Related Repos
-
-* [Heimdell Server](https://github.com/ShindouMihou/heimdell)
-* [react-native-ota-hot-update](https://github.com/vantuan88291/react-native-ota-hot-update)
-
-## 🧪 Status
-
-This CLI is experimental and in active development. Features may change. Feedback and contributions are welcome.
+- [`react-native-ota-hot-update`](https://github.com/vantuan88291/react-native-ota-hot-update) – OTA runtime update handler for React Native
+- [`heimdell` backend server](https://github.com/ShindouMihou/heimdell) – stores and serves bundles prepared by this CLI

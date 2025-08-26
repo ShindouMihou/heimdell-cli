@@ -144,7 +144,6 @@ After making any changes to the CLI, ALWAYS test these complete scenarios:
 - **Missing module errors**: Usually indicate dependency installation failure
   - Error pattern: `error: Could not resolve: "[package]". Maybe you need to "bun install"?`
   - Solution: Ensure `bun install` completed successfully first
-- **Missing utils/environment.ts**: Create the utility file if missing in repository clone
 - **Build timeout**: Increase timeout, never cancel builds
 
 ### Runtime Issues
@@ -159,6 +158,5 @@ After making any changes to the CLI, ALWAYS test these complete scenarios:
 - **NEVER CANCEL operations that are still progressing**
 
 ### Repository-Specific Issues
-- **Missing src/utils/environment.ts**: This file may be missing from some clones and needs to be created
 - **Incomplete dependency resolution**: Some packages may not be available in all environments
 - **Platform compatibility**: Build targets are configured for macOS, Linux, and Windows x64

@@ -8,6 +8,7 @@ import EnvironmentIntroduction from "./pages/env/EnvironmentIntroduction.tsx";
 import EnvironmentStatus from "./pages/env/EnvironmentStatus.tsx";
 import fs from "node:fs";
 import {sanitizeEnvironmentName, validateEnvironmentName} from "../utils/environment.ts";
+import {setCurrentEnvironment, createSymlink} from "../utils/environment-state.ts";
 
 type EnvironmentComponentProps = {
     environment: string;
@@ -56,14 +57,11 @@ function EnvironmentComponent({environment}: EnvironmentComponentProps) {
                             `.heimdell/${sanitizedEnvironment}` :
                             ".heimdell";
 
-                        if (fs.existsSync(".heimdell/credentials.json")) {
-                            try {
-                                fs.mkdirSync(".heimdell/.temp", { recursive: true });
-                            } catch (_) {}
-                            fs.copyFileSync(`.heimdell/credentials.json`, ".heimdell/.temp/credentials.json.bak");
-                        }
-
-                        fs.copyFileSync(`${environmentDir}/credentials.json`, `.heimdell/credentials.json`);
+                        // Create symlink instead of copying file
+                        createSymlink(`${environmentDir}/credentials.json`, `.heimdell/credentials.json`);
+                        
+                        // Save current environment state
+                        await setCurrentEnvironment(sanitizedEnvironment);
 
                         // Just appreciate the animation and smoothness of Ink a little bit.
                         setTimeout(() => {

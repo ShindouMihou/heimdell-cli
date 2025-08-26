@@ -12,6 +12,7 @@ import LoginEnterProjectTag from "./pages/login/LoginEnterProjectTag.tsx";
 import LoginSelectPlatforms from "./pages/login/LoginSelectPlatforms.tsx";
 import fs from "node:fs";
 import {sanitizeEnvironmentName, validateEnvironmentName} from "../utils/environment.ts";
+import {getCurrentEnvironment, setCurrentEnvironment, createSymlink} from "../utils/environment-state.ts";
 
 type LoginComponentProps = {
     environment?: string;
@@ -58,17 +59,33 @@ function LoginComponent({environment}: LoginComponentProps) {
 
                         const gitignoreContents = [
                             "credentials.json",
-                            ".temp"
+                            ".temp",
+                            ".current-env"
                         ].join("\n");
 
                         const environmentDir = sanitizedEnvironment ?
                             `.heimdell/${sanitizedEnvironment}` :
                             ".heimdell";
 
+                        // Ensure environment directory exists
+                        fs.mkdirSync(environmentDir, { recursive: true });
+
+                        // Save credentials to environment-specific file
                         await Bun.file(`${environmentDir}/credentials.json`).write(credentialsContent);
-                        if (!fs.existsSync(".heimdell/credentials.json")) {
-                            await Bun.file(".heimdell/credentials.json").write(credentialsContent);
+                        
+                        // Create or update symlink to main credentials file if this is not the default dir
+                        if (sanitizedEnvironment) {
+                            createSymlink(`${environmentDir}/credentials.json`, `.heimdell/credentials.json`);
+                            // Save current environment state
+                            await setCurrentEnvironment(sanitizedEnvironment);
+                        } else {
+                            // If default environment, ensure main credentials exist
+                            if (!fs.existsSync(".heimdell/credentials.json")) {
+                                await Bun.file(".heimdell/credentials.json").write(credentialsContent);
+                            }
+                            await setCurrentEnvironment(null);
                         }
+                        
                         await Bun.file(".heimdell/.gitignore").write(gitignoreContents);
 
                         // Just appreciate the animation and smoothness of Ink a little bit.
@@ -154,7 +171,16 @@ export const useLoginCommand = (yargs: Argv) => {
             })
         },
         async function (args) {
-            const environment = args.environment as string | undefined;
+            let environment = args.environment as string | undefined;
+            
+            // If no environment specified, try to use current environment
+            if (!environment || environment === 'default') {
+                const currentEnv = await getCurrentEnvironment();
+                if (currentEnv) {
+                    environment = currentEnv;
+                }
+            }
+            
             render(<LoginComponent environment={environment}/>);
         },
     )

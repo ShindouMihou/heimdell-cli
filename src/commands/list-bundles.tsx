@@ -38,6 +38,7 @@ function ListBundlesCommand() {
     return (
         <Table data={query.result!.data!.map(b => {
             const formatted = ({...b, status: b.is_disposed ? "ROLLED BACK" : "AVAILABLE"});
+            // @ts-ignore
             delete formatted.is_disposed;
             return formatted;
         })}/>

@@ -1,7 +1,10 @@
 import {Box, Text} from "ink";
 import {ConfirmInput} from "@inkjs/ui";
 
-export default function LoginIntroduction(props: { onConfirm: () => void }) {
+export default function LoginIntroduction(props: {
+    onConfirm: () => void,
+    environment?: string,
+}) {
     return (
         <>
             <Text>Welcome to <Text bold={true}>Heimdell</Text></Text>
@@ -15,6 +18,11 @@ export default function LoginIntroduction(props: { onConfirm: () => void }) {
                 within the project. If you don't have a Heimdell server, please set-up one by referring to the documentations
                 at <Text bold={true}>github.com/ShindouMihou/heimdell</Text>.
             </Text>
+            {props.environment &&
+                <Text bold={true} italic={true} color={"redBright"}>
+                    You are adding {props.environment} environment to this project.
+                </Text>
+            }
             <Box>
                 <Text>
                     Please confirm that you have an Heimdell server running. (

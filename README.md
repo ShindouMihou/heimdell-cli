@@ -48,6 +48,18 @@ heimdell login
 It should create a `.heimdell/credentials.json` file in the current directory. 
 Never **EVER** commit this folder to version control.
 
+> Generally, you'd have multiple Heimdell instances for different environments (e.g., staging, production).
+> You can add those environments by running:
+> ```bash
+> heimdell login -e <environment-name>
+>```
+> 
+> Once added, you can switch between them using:
+> ```bash
+>heimdell env <environment-name>
+> ```
+> By default, the environment is set to `default`.
+
 Then you can use the following commands:
 ```bash
 # Preview checks and push a new update bundle

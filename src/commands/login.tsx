@@ -1,4 +1,4 @@
-import type {Argv} from "yargs";
+import {type Argv} from "yargs";
 import {createHeimdellClient} from "../api/client.ts";
 import {render} from "ink";
 import {useEffect, useState} from "react";
@@ -10,8 +10,13 @@ import LoginStatus from "./pages/login/LoginStatus.tsx";
 import Border from "../components/Border.tsx";
 import LoginEnterProjectTag from "./pages/login/LoginEnterProjectTag.tsx";
 import LoginSelectPlatforms from "./pages/login/LoginSelectPlatforms.tsx";
+import fs from "node:fs";
+import {sanitizeEnvironmentName, validateEnvironmentName} from "../utils/environment.ts";
 
-function LoginComponent() {
+type LoginComponentProps = {
+    environment?: string;
+}
+function LoginComponent({environment}: LoginComponentProps) {
     const [page, setPage] = useState(0);
 
     const [serverAddress, setServerAddress] = useState("");
@@ -22,6 +27,8 @@ function LoginComponent() {
 
     const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
     const [error, setError] = useState<string | null>(null);
+
+    const sanitizedEnvironment = sanitizeEnvironmentName(environment);
 
     useEffect(() => {
         if (page === 6) {
@@ -54,7 +61,14 @@ function LoginComponent() {
                             ".temp"
                         ].join("\n");
 
-                        await Bun.file(".heimdell/credentials.json").write(credentialsContent);
+                        const environmentDir = sanitizedEnvironment ?
+                            `.heimdell/${sanitizedEnvironment}` :
+                            ".heimdell";
+
+                        await Bun.file(`${environmentDir}/credentials.json`).write(credentialsContent);
+                        if (!fs.existsSync(".heimdell/credentials.json")) {
+                            await Bun.file(".heimdell/credentials.json").write(credentialsContent);
+                        }
                         await Bun.file(".heimdell/.gitignore").write(gitignoreContents);
 
                         // Just appreciate the animation and smoothness of Ink a little bit.
@@ -80,6 +94,7 @@ function LoginComponent() {
         <Border>
             {page === 0 && <LoginIntroduction
                 onConfirm={() => setPage(1)}
+                environment={sanitizedEnvironment}
             />}
             {page === 1 && <EnterServerAddress
                 onSubmit={(serverAddress) => {
@@ -121,9 +136,26 @@ export const useLoginCommand = (yargs: Argv) => {
     yargs.command(
         'login',
         'Logs into Heimdell to enable auto-loading credentials within the project.',
-        (yargs) => {},
-        async function () {
-            render(<LoginComponent/>);
+        (yargs) => {
+            yargs.option({
+                environment: {
+                    type: 'string',
+                    alias: 'e',
+                    description: 'The environment to login to (e.g., development, staging, production).',
+                    default: 'default',
+                },
+            });
+
+            yargs.check((argv) => {
+                if (argv.environment) {
+                    validateEnvironmentName(argv.environment as string);
+                }
+                return true;
+            })
+        },
+        async function (args) {
+            const environment = args.environment as string | undefined;
+            render(<LoginComponent environment={environment}/>);
         },
     )
 }

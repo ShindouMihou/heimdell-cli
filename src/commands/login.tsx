@@ -12,7 +12,7 @@ import LoginEnterProjectTag from "./pages/login/LoginEnterProjectTag.tsx";
 import LoginSelectPlatforms from "./pages/login/LoginSelectPlatforms.tsx";
 import fs from "node:fs";
 import {sanitizeEnvironmentName, validateEnvironmentName} from "../utils/environment.ts";
-import {getCurrentEnvironment, setCurrentEnvironment, createSymlink} from "../utils/environment-state.ts";
+import {getCurrentEnvironmentFromCredentials} from "../credentials/autoload.ts";
 
 type LoginComponentProps = {
     environment?: string;
@@ -42,7 +42,8 @@ function LoginComponent({environment}: LoginComponentProps) {
                     username,
                     password,
                     tag,
-                    platforms
+                    platforms,
+                    environment: sanitizedEnvironment
                 };
 
                 const heimdellClient = createHeimdellClient();
@@ -54,13 +55,13 @@ function LoginComponent({environment}: LoginComponentProps) {
                             username,
                             password,
                             tag,
-                            platforms
-                        });
+                            platforms,
+                            environment: sanitizedEnvironment
+                        }, null, 2);
 
                         const gitignoreContents = [
                             "credentials.json",
-                            ".temp",
-                            ".current-env"
+                            ".temp"
                         ].join("\n");
 
                         const environmentDir = sanitizedEnvironment ?
@@ -70,21 +71,18 @@ function LoginComponent({environment}: LoginComponentProps) {
                         // Ensure environment directory exists
                         fs.mkdirSync(environmentDir, { recursive: true });
 
-                        // Save credentials to environment-specific file
-                        await Bun.file(`${environmentDir}/credentials.json`).write(credentialsContent);
+                        // Save credentials to environment-specific file (without environment field for storage)
+                        const storageCredentials = {
+                            baseUrl: serverAddress,
+                            username,
+                            password,
+                            tag,
+                            platforms
+                        };
+                        await Bun.file(`${environmentDir}/credentials.json`).write(JSON.stringify(storageCredentials, null, 2));
                         
-                        // Create or update symlink to main credentials file if this is not the default dir
-                        if (sanitizedEnvironment) {
-                            createSymlink(`${environmentDir}/credentials.json`, `.heimdell/credentials.json`);
-                            // Save current environment state
-                            await setCurrentEnvironment(sanitizedEnvironment);
-                        } else {
-                            // If default environment, ensure main credentials exist
-                            if (!fs.existsSync(".heimdell/credentials.json")) {
-                                await Bun.file(".heimdell/credentials.json").write(credentialsContent);
-                            }
-                            await setCurrentEnvironment(null);
-                        }
+                        // Save to main credentials file with environment field
+                        await Bun.file(".heimdell/credentials.json").write(credentialsContent);
                         
                         await Bun.file(".heimdell/.gitignore").write(gitignoreContents);
 
@@ -175,7 +173,7 @@ export const useLoginCommand = (yargs: Argv) => {
             
             // If no environment specified, try to use current environment
             if (!environment || environment === 'default') {
-                const currentEnv = await getCurrentEnvironment();
+                const currentEnv = await getCurrentEnvironmentFromCredentials();
                 if (currentEnv) {
                     environment = currentEnv;
                 }

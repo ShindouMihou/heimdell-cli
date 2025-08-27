@@ -7,8 +7,7 @@ import {loadCredentials} from "../credentials/autoload.ts";
 import EnvironmentIntroduction from "./pages/env/EnvironmentIntroduction.tsx";
 import EnvironmentStatus from "./pages/env/EnvironmentStatus.tsx";
 import fs from "node:fs";
-import {sanitizeEnvironmentName, validateEnvironmentName} from "../utils/environment.ts";
-import {setCurrentEnvironment, createSymlink} from "../utils/environment-state.ts";
+import {sanitizeEnvironmentName, validateEnvironmentName, switchToEnvironment} from "../utils/environment.ts";
 
 type EnvironmentComponentProps = {
     environment: string;
@@ -53,15 +52,8 @@ function EnvironmentComponent({environment}: EnvironmentComponentProps) {
                 const response = await heimdellClient.auth.login();
                 if (response.statusCode >= 200 && response.statusCode <= 299) {
                     try {
-                        const environmentDir = sanitizedEnvironment ?
-                            `.heimdell/${sanitizedEnvironment}` :
-                            ".heimdell";
-
-                        // Create symlink instead of copying file
-                        createSymlink(`${environmentDir}/credentials.json`, `.heimdell/credentials.json`);
-                        
-                        // Save current environment state
-                        await setCurrentEnvironment(sanitizedEnvironment);
+                        // Switch to the environment using copy-based approach
+                        await switchToEnvironment(sanitizedEnvironment);
 
                         // Just appreciate the animation and smoothness of Ink a little bit.
                         setTimeout(() => {

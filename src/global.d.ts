@@ -5,5 +5,6 @@ declare module globalThis {
         baseUrl: string;
         tag: string;
         platforms: ("android"|"ios")[];
+        environment?: string;
     } | undefined;
 }

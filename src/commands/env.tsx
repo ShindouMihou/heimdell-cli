@@ -87,7 +87,7 @@ function EnvironmentComponent({environment}: EnvironmentComponentProps) {
             />}
             {(page === 0 && credentials != null) && <EnvironmentIntroduction
                 onConfirm={() => setPage(1)}
-                environment={sanitizedEnvironment}
+                environment={sanitizedEnvironment || ''}
                 credentials={credentials}
             />}
             {page === 1 && <EnvironmentStatus 

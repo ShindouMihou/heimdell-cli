@@ -43,7 +43,7 @@ function LoginComponent({environment}: LoginComponentProps) {
                     password,
                     tag,
                     platforms,
-                    environment: sanitizedEnvironment
+                    environment: sanitizedEnvironment || undefined
                 };
 
                 const heimdellClient = createHeimdellClient();
@@ -56,7 +56,7 @@ function LoginComponent({environment}: LoginComponentProps) {
                             password,
                             tag,
                             platforms,
-                            environment: sanitizedEnvironment
+                            environment: sanitizedEnvironment || undefined
                         };
 
                         const gitignoreContents = [
@@ -75,13 +75,24 @@ function LoginComponent({environment}: LoginComponentProps) {
                             // Save credentials to environment-specific file
                             await Bun.file(`${environmentDir}/credentials.json`).write(JSON.stringify(credentialsData, null, 2));
                             
-                            // Create symlink from environment file to main credentials file
+                            // Create symlink from environment file to main credentials file for real-time sync
                             const envCredentialsPath = `${environmentDir}/credentials.json`;
                             const mainCredentialsPath = ".heimdell/credentials.json";
                             const usingSymlinks = createSymlink(envCredentialsPath, mainCredentialsPath);
                             
                             if (!usingSymlinks) {
-                                console.warn("\n⚠️  Note: Using file copy instead of symlinks. Credential modifications should be done by running 'heimdell login' again rather than editing files directly.");
+                                console.warn("\n⚠️  Note: Using file copy instead of symlinks due to system limitations.");
+                                console.warn("   For real-time credential sync, enable Developer Mode on Windows or use a Unix system.");
+                                console.warn("   With file copy mode:");
+                                console.warn("   • Edit credentials in .heimdell/" + sanitizedEnvironment + "/credentials.json");
+                                console.warn("   • Changes require running 'heimdall env " + sanitizedEnvironment + "' to become active");
+                                console.warn("   • Avoid editing .heimdell/credentials.json directly as changes will be lost");
+                            } else {
+                                console.log("\n✅ Login successful with real-time credential sync enabled");
+                                console.log("   You can edit credentials in either location:");
+                                console.log("   • .heimdell/credentials.json (main file)");  
+                                console.log("   • .heimdell/" + sanitizedEnvironment + "/credentials.json (environment file)");
+                                console.log("   Changes to either file are immediately reflected in both locations");
                             }
                         } else {
                             // For default environment, save directly to main file without environment field
@@ -120,7 +131,7 @@ function LoginComponent({environment}: LoginComponentProps) {
         <Border>
             {page === 0 && <LoginIntroduction
                 onConfirm={() => setPage(1)}
-                environment={sanitizedEnvironment}
+                environment={sanitizedEnvironment || undefined}
             />}
             {page === 1 && <EnterServerAddress
                 onSubmit={(serverAddress) => {

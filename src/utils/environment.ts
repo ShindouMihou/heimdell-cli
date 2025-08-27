@@ -106,7 +106,7 @@ export const isUsingSymlinks = (): boolean => {
 
 /**
  * Switch to a specific environment using symlinks (with file copy fallback)
- * This approach maintains real-time sync between environment files and main credentials
+ * This approach provides real-time credential synchronization between environment files and main credentials
  */
 export const switchToEnvironment = async (environment: string | null): Promise<void> => {
     try {
@@ -120,24 +120,31 @@ export const switchToEnvironment = async (environment: string | null): Promise<v
                 throw new Error(`No credentials found for environment "${environment}"`);
             }
             
-            // Create symlink (or copy as fallback) from environment file to main file
+            // Ensure environment field is set in the source file for self-describing credentials
+            const content = await Bun.file(envCredentialsPath).text();
+            const credentials = JSON.parse(content);
+            if (credentials.environment !== environment) {
+                credentials.environment = environment;
+                await Bun.file(envCredentialsPath).write(JSON.stringify(credentials, null, 2));
+            }
+            
+            // Create symlink from environment file to main file for real-time sync
             const usingSymlinks = createSymlink(envCredentialsPath, mainCredentialsPath);
             
-            // If using file copy fallback, we need to add environment field for consistency
             if (!usingSymlinks) {
-                const content = await Bun.file(envCredentialsPath).text();
-                const credentials = JSON.parse(content);
-                credentials.environment = environment;
-                await Bun.file(mainCredentialsPath).write(JSON.stringify(credentials, null, 2));
-                console.warn("⚠️  Note: Using file copy instead of symlinks. Credential modifications should be done by running 'heimdell login' again rather than editing files directly.");
+                // File copy fallback - warn about UX limitations
+                console.warn("⚠️  Note: Using file copy instead of symlinks due to system limitations.");
+                console.warn("   For real-time credential sync, enable Developer Mode on Windows or use a Unix system.");
+                console.warn("   With file copy mode:");
+                console.warn("   • Edit credentials in .heimdell/" + environment + "/credentials.json");
+                console.warn("   • Changes require running 'heimdall env " + environment + "' to become active");
+                console.warn("   • Avoid editing .heimdell/credentials.json directly as changes will be lost");
             } else {
-                // With symlinks, we need to ensure environment field is in the source file
-                const content = await Bun.file(envCredentialsPath).text();
-                const credentials = JSON.parse(content);
-                if (credentials.environment !== environment) {
-                    credentials.environment = environment;
-                    await Bun.file(envCredentialsPath).write(JSON.stringify(credentials, null, 2));
-                }
+                console.log("✅ Environment switched with real-time credential sync enabled");
+                console.log("   You can edit credentials in either location:");
+                console.log("   • .heimdell/credentials.json (main file)");  
+                console.log("   • .heimdell/" + environment + "/credentials.json (environment file)");
+                console.log("   Changes to either file are immediately reflected in both locations");
             }
         } else {
             // Switch to default environment (no symlink, direct file)
@@ -152,7 +159,7 @@ export const switchToEnvironment = async (environment: string | null): Promise<v
                     if (fs.existsSync(backupPath)) {
                         fs.renameSync(backupPath, mainCredentialsPath);
                         
-                        // Remove environment field from restored file
+                        // Remove environment field from restored file for default environment
                         const content = await Bun.file(mainCredentialsPath).text();
                         const credentials = JSON.parse(content);
                         delete credentials.environment;

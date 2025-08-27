@@ -1,3 +1,7 @@
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+
 export const sanitizeEnvironmentName = (environment?: string): string | null => {
     if (!environment) return null;
     return environment.replace(/[^a-zA-Z0-9_]/g, '');
@@ -13,40 +17,125 @@ export const validateEnvironmentName = (environment: string): void => {
 };
 
 /**
- * Copy credentials from environment-specific folder to main credentials file
- * with environment field populated
+ * Create or update a symlink from source to target
+ * On Windows, falls back to copying if symlink creation fails
+ */
+export const createSymlink = (source: string, target: string): boolean => {
+    try {
+        // Remove existing target if it exists (could be file or symlink)
+        if (fs.existsSync(target)) {
+            const stats = fs.lstatSync(target);
+            if (stats.isSymbolicLink()) {
+                fs.unlinkSync(target);
+            } else {
+                // If it's a regular file, back it up first
+                const backupPath = target + ".bak";
+                if (fs.existsSync(backupPath)) {
+                    fs.unlinkSync(backupPath);
+                }
+                fs.renameSync(target, backupPath);
+            }
+        }
+        
+        // Ensure source exists
+        if (!fs.existsSync(source)) {
+            throw new Error(`Source file does not exist: ${source}`);
+        }
+        
+        // Create symlink - use relative path for portability
+        const relativePath = path.relative(path.dirname(target), source);
+        
+        try {
+            // Try to create symlink first
+            fs.symlinkSync(relativePath, target, 'file');
+            return true; // Symlink created successfully
+        } catch (symlinkError) {
+            // On Windows or without permissions, symlinks might fail
+            // Fall back to copying file as a workaround
+            if (os.platform() === 'win32') {
+                console.warn('Symlink creation failed on Windows, falling back to file copy');
+            } else {
+                console.warn('Symlink creation failed, falling back to file copy');
+            }
+            fs.copyFileSync(source, target);
+            return false; // Used file copy fallback
+        }
+    } catch (error) {
+        throw new Error(`Failed to create symlink: ${error instanceof Error ? error.message : String(error)}`);
+    }
+};
+
+/**
+ * Check if the main credentials file is a symlink
+ */
+export const isUsingSymlinks = (): boolean => {
+    try {
+        if (!fs.existsSync(".heimdell/credentials.json")) {
+            return false;
+        }
+        return fs.lstatSync(".heimdell/credentials.json").isSymbolicLink();
+    } catch (error) {
+        return false;
+    }
+};
+
+/**
+ * Switch to a specific environment using symlinks (with file copy fallback)
+ * This approach maintains real-time sync between environment files and main credentials
  */
 export const switchToEnvironment = async (environment: string | null): Promise<void> => {
-    const fs = await import("node:fs");
-    
     try {
-        let sourceFile: string;
-        let targetCredentials: any;
+        const mainCredentialsPath = ".heimdell/credentials.json";
         
         if (environment) {
-            // Load from environment-specific folder
-            sourceFile = `.heimdell/${environment}/credentials.json`;
-            if (!fs.existsSync(sourceFile)) {
+            // Switch to specific environment
+            const envCredentialsPath = `.heimdell/${environment}/credentials.json`;
+            
+            if (!fs.existsSync(envCredentialsPath)) {
                 throw new Error(`No credentials found for environment "${environment}"`);
             }
             
-            const content = await Bun.file(sourceFile).text();
-            targetCredentials = JSON.parse(content);
-            targetCredentials.environment = environment;
-        } else {
-            // Load from default location and remove environment field
-            sourceFile = `.heimdell/credentials.json`;
-            if (!fs.existsSync(sourceFile)) {
-                throw new Error("No default credentials found");
-            }
+            // Create symlink (or copy as fallback) from environment file to main file
+            const usingSymlinks = createSymlink(envCredentialsPath, mainCredentialsPath);
             
-            const content = await Bun.file(sourceFile).text();
-            targetCredentials = JSON.parse(content);
-            delete targetCredentials.environment;
+            // If using file copy fallback, we need to add environment field for consistency
+            if (!usingSymlinks) {
+                const content = await Bun.file(envCredentialsPath).text();
+                const credentials = JSON.parse(content);
+                credentials.environment = environment;
+                await Bun.file(mainCredentialsPath).write(JSON.stringify(credentials, null, 2));
+                console.warn("⚠️  Note: Using file copy instead of symlinks. Credential modifications should be done by running 'heimdell login' again rather than editing files directly.");
+            } else {
+                // With symlinks, we need to ensure environment field is in the source file
+                const content = await Bun.file(envCredentialsPath).text();
+                const credentials = JSON.parse(content);
+                if (credentials.environment !== environment) {
+                    credentials.environment = environment;
+                    await Bun.file(envCredentialsPath).write(JSON.stringify(credentials, null, 2));
+                }
+            }
+        } else {
+            // Switch to default environment (no symlink, direct file)
+            // Remove symlink if it exists and restore default behavior
+            if (fs.existsSync(mainCredentialsPath)) {
+                const stats = fs.lstatSync(mainCredentialsPath);
+                if (stats.isSymbolicLink()) {
+                    fs.unlinkSync(mainCredentialsPath);
+                    
+                    // Look for backup file or create minimal credentials
+                    const backupPath = mainCredentialsPath + ".bak";
+                    if (fs.existsSync(backupPath)) {
+                        fs.renameSync(backupPath, mainCredentialsPath);
+                        
+                        // Remove environment field from restored file
+                        const content = await Bun.file(mainCredentialsPath).text();
+                        const credentials = JSON.parse(content);
+                        delete credentials.environment;
+                        await Bun.file(mainCredentialsPath).write(JSON.stringify(credentials, null, 2));
+                    }
+                }
+            }
         }
-        
-        // Write to main credentials file
-        await Bun.file(".heimdell/credentials.json").write(JSON.stringify(targetCredentials, null, 2));
     } catch (error) {
         throw new Error(`Failed to switch environment: ${error instanceof Error ? error.message : String(error)}`);
     }

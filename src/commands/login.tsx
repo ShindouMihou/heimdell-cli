@@ -11,7 +11,7 @@ import Border from "../components/Border.tsx";
 import LoginEnterProjectTag from "./pages/login/LoginEnterProjectTag.tsx";
 import LoginSelectPlatforms from "./pages/login/LoginSelectPlatforms.tsx";
 import fs from "node:fs";
-import {sanitizeEnvironmentName, validateEnvironmentName} from "../utils/environment.ts";
+import {sanitizeEnvironmentName, validateEnvironmentName, createSymlink} from "../utils/environment.ts";
 import {getCurrentEnvironmentFromCredentials} from "../credentials/autoload.ts";
 
 type LoginComponentProps = {
@@ -50,14 +50,14 @@ function LoginComponent({environment}: LoginComponentProps) {
                 const response = await heimdellClient.auth.login();
                 if (response.statusCode >= 200 && response.statusCode <= 299) {
                     try {
-                        const credentialsContent = JSON.stringify({
+                        const credentialsData = {
                             baseUrl: serverAddress,
                             username,
                             password,
                             tag,
                             platforms,
                             environment: sanitizedEnvironment
-                        }, null, 2);
+                        };
 
                         const gitignoreContents = [
                             "credentials.json",
@@ -71,18 +71,29 @@ function LoginComponent({environment}: LoginComponentProps) {
                         // Ensure environment directory exists
                         fs.mkdirSync(environmentDir, { recursive: true });
 
-                        // Save credentials to environment-specific file (without environment field for storage)
-                        const storageCredentials = {
-                            baseUrl: serverAddress,
-                            username,
-                            password,
-                            tag,
-                            platforms
-                        };
-                        await Bun.file(`${environmentDir}/credentials.json`).write(JSON.stringify(storageCredentials, null, 2));
-                        
-                        // Save to main credentials file with environment field
-                        await Bun.file(".heimdell/credentials.json").write(credentialsContent);
+                        if (sanitizedEnvironment) {
+                            // Save credentials to environment-specific file
+                            await Bun.file(`${environmentDir}/credentials.json`).write(JSON.stringify(credentialsData, null, 2));
+                            
+                            // Create symlink from environment file to main credentials file
+                            const envCredentialsPath = `${environmentDir}/credentials.json`;
+                            const mainCredentialsPath = ".heimdell/credentials.json";
+                            const usingSymlinks = createSymlink(envCredentialsPath, mainCredentialsPath);
+                            
+                            if (!usingSymlinks) {
+                                console.warn("\n⚠️  Note: Using file copy instead of symlinks. Credential modifications should be done by running 'heimdell login' again rather than editing files directly.");
+                            }
+                        } else {
+                            // For default environment, save directly to main file without environment field
+                            const defaultCredentials = {
+                                baseUrl: serverAddress,
+                                username,
+                                password,
+                                tag,
+                                platforms
+                            };
+                            await Bun.file(".heimdell/credentials.json").write(JSON.stringify(defaultCredentials, null, 2));
+                        }
                         
                         await Bun.file(".heimdell/.gitignore").write(gitignoreContents);
 

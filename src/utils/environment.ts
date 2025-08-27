@@ -17,6 +17,31 @@ export const validateEnvironmentName = (environment: string): void => {
 };
 
 /**
+ * Get the temp directory path and ensure it exists
+ */
+const getTempDir = (): string => {
+    const heimdellDir = path.join(os.homedir(), '.heimdell');
+    const tempDir = path.join(heimdellDir, '.temp');
+    
+    if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    return tempDir;
+};
+
+/**
+ * Generate a backup file path in the temp directory
+ */
+const getBackupPath = (originalPath: string): string => {
+    const tempDir = getTempDir();
+    const relativePath = path.relative(os.homedir(), originalPath);
+    // Replace path separators with underscores to create a flat structure
+    const backupName = relativePath.replace(/[\/\\]/g, '_') + '.bak';
+    return path.join(tempDir, backupName);
+};
+
+/**
  * Create or update a symlink from source to target
  * On Windows, falls back to copying if symlink creation fails
  */
@@ -29,7 +54,7 @@ export const createSymlink = (source: string, target: string): boolean => {
                 fs.unlinkSync(target);
             } else {
                 // If it's a regular file, back it up first
-                const backupPath = target + ".bak";
+                const backupPath = getBackupPath(target);
                 if (fs.existsSync(backupPath)) {
                     fs.unlinkSync(backupPath);
                 }
@@ -123,7 +148,7 @@ export const switchToEnvironment = async (environment: string | null): Promise<v
                     fs.unlinkSync(mainCredentialsPath);
                     
                     // Look for backup file or create minimal credentials
-                    const backupPath = mainCredentialsPath + ".bak";
+                    const backupPath = getBackupPath(mainCredentialsPath);
                     if (fs.existsSync(backupPath)) {
                         fs.renameSync(backupPath, mainCredentialsPath);
                         

@@ -28,7 +28,6 @@ function LoginComponent({environment}: LoginComponentProps) {
 
     const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
     const [error, setError] = useState<string | null>(null);
-    const [symlinkInfo, setSymlinkInfo] = useState<{usingSymlinks: boolean; environment: string} | undefined>();
 
     const sanitizedEnvironment = sanitizeEnvironmentName(environment);
 
@@ -79,13 +78,7 @@ function LoginComponent({environment}: LoginComponentProps) {
                             // Create symlink from environment file to main credentials file for real-time sync
                             const envCredentialsPath = `${environmentDir}/credentials.json`;
                             const mainCredentialsPath = ".heimdell/credentials.json";
-                            const usingSymlinks = createSymlink(envCredentialsPath, mainCredentialsPath);
-                            
-                            // Store symlink info for UI display
-                            setSymlinkInfo({
-                                usingSymlinks,
-                                environment: sanitizedEnvironment
-                            });
+                            createSymlink(envCredentialsPath, mainCredentialsPath);
                         } else {
                             // For default environment, save directly to main file without environment field
                             const defaultCredentials = {
@@ -156,7 +149,7 @@ function LoginComponent({environment}: LoginComponentProps) {
                     setPage(6);
                 }}
             />}
-            {page === 6 && <LoginStatus status={status} error={error} symlinkInfo={symlinkInfo}/>}
+            {page === 6 && <LoginStatus status={status} error={error}/>}
         </Border>
     )
 }

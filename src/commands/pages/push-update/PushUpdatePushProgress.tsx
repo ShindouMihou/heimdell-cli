@@ -1,8 +1,7 @@
 import Border from "../../../components/Border.tsx";
 import {Box, Text} from "ink";
-import {ConfirmInput, Spinner, UnorderedList} from "@inkjs/ui";
+import {Spinner, UnorderedList} from "@inkjs/ui";
 import {useEffect, useMemo, useRef, useState} from "react";
-import fs from "node:fs";
 import {createHeimdellClient} from "../../../api/client.ts";
 import type {Bundle} from "../../../api/types/bundle.ts";
 import {uploadBundleFile} from "../../../api/resources/v1/upload.ts";
@@ -64,6 +63,10 @@ export default function PushUpdatePushProgress(props: {
                         isAndroid ? Bun.file("dist/hermes.android.hbc.zip") : undefined,
                         isIos ? Bun.file("dist/hermes.ios.hbc.zip") : undefined
                     );
+
+                    // Clean up local bundle files
+                    Bun.file("dist/hermes.ios.hbc.zip").delete();
+                    Bun.file("dist/hermes.android.hbc.zip").delete();
                 } catch (e) {
                     setError("Failed to upload bundle files: " + (e instanceof Error ? e.message : String(e)));
                     return "error" as ChecklistStatus;

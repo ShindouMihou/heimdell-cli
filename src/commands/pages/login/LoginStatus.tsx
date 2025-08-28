@@ -1,7 +1,12 @@
 import {Box, Newline, Text} from "ink";
 import {Badge, Spinner} from "@inkjs/ui";
 
-export default function LoginStatus(props: { status: "idle" | "loading" | "ok" | "error", error: string | null }) {
+type LoginStatusProps = {
+    status: "idle" | "loading" | "ok" | "error";
+    error: string | null;
+};
+
+export default function LoginStatus(props: LoginStatusProps) {
     const {status, error} = props;
     return (
         <>
@@ -24,6 +29,7 @@ export default function LoginStatus(props: { status: "idle" | "loading" | "ok" |
                         <Newline/>
                         If you have any issues, please create an issue on our GitHub Repository.
                     </Text>
+                    
                     <Box gap={1} marginTop={1}>
                         <Badge color={"yellow"}>TIP</Badge>
                         <Text>Do not share the .heimdell folder on the project as it contains your credentials</Text>

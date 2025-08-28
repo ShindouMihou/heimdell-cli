@@ -19,3 +19,16 @@ export const loadCredentials = async (path: string) => {
         throw new Error("No credentials found.");
     }
 }
+
+export const getCurrentEnvironmentFromCredentials = async (): Promise<string | null> => {
+    try {
+        const creds = await loadCredentials(".heimdell/credentials.json");
+        if (creds && creds.environment) {
+            return creds.environment;
+        }
+        // If no environment field, check if we're in the main .heimdell folder (default)
+        return null; // null represents default environment
+    } catch (error) {
+        return null;
+    }
+}

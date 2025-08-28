@@ -11,7 +11,8 @@ import Border from "../components/Border.tsx";
 import LoginEnterProjectTag from "./pages/login/LoginEnterProjectTag.tsx";
 import LoginSelectPlatforms from "./pages/login/LoginSelectPlatforms.tsx";
 import fs from "node:fs";
-import {sanitizeEnvironmentName, validateEnvironmentName} from "../utils/environment.ts";
+import {sanitizeEnvironmentName, validateEnvironmentName, createSymlink} from "../utils/environment.ts";
+import {getCurrentEnvironmentFromCredentials} from "../credentials/autoload.ts";
 
 type LoginComponentProps = {
     environment?: string;
@@ -41,20 +42,22 @@ function LoginComponent({environment}: LoginComponentProps) {
                     username,
                     password,
                     tag,
-                    platforms
+                    platforms,
+                    environment: sanitizedEnvironment || undefined
                 };
 
                 const heimdellClient = createHeimdellClient();
                 const response = await heimdellClient.auth.login();
                 if (response.statusCode >= 200 && response.statusCode <= 299) {
                     try {
-                        const credentialsContent = JSON.stringify({
+                        const credentialsData = {
                             baseUrl: serverAddress,
                             username,
                             password,
                             tag,
-                            platforms
-                        });
+                            platforms,
+                            environment: sanitizedEnvironment || undefined
+                        };
 
                         const gitignoreContents = [
                             "credentials.json",
@@ -65,10 +68,29 @@ function LoginComponent({environment}: LoginComponentProps) {
                             `.heimdell/${sanitizedEnvironment}` :
                             ".heimdell";
 
-                        await Bun.file(`${environmentDir}/credentials.json`).write(credentialsContent);
-                        if (!fs.existsSync(".heimdell/credentials.json")) {
-                            await Bun.file(".heimdell/credentials.json").write(credentialsContent);
+                        // Ensure environment directory exists
+                        fs.mkdirSync(environmentDir, { recursive: true });
+
+                        if (sanitizedEnvironment) {
+                            // Save credentials to environment-specific file
+                            await Bun.file(`${environmentDir}/credentials.json`).write(JSON.stringify(credentialsData, null, 2));
+                            
+                            // Create symlink from environment file to main credentials file for real-time sync
+                            const envCredentialsPath = `${environmentDir}/credentials.json`;
+                            const mainCredentialsPath = ".heimdell/credentials.json";
+                            createSymlink(envCredentialsPath, mainCredentialsPath);
+                        } else {
+                            // For default environment, save directly to main file without environment field
+                            const defaultCredentials = {
+                                baseUrl: serverAddress,
+                                username,
+                                password,
+                                tag,
+                                platforms
+                            };
+                            await Bun.file(".heimdell/credentials.json").write(JSON.stringify(defaultCredentials, null, 2));
                         }
+                        
                         await Bun.file(".heimdell/.gitignore").write(gitignoreContents);
 
                         // Just appreciate the animation and smoothness of Ink a little bit.
@@ -94,7 +116,7 @@ function LoginComponent({environment}: LoginComponentProps) {
         <Border>
             {page === 0 && <LoginIntroduction
                 onConfirm={() => setPage(1)}
-                environment={sanitizedEnvironment}
+                environment={sanitizedEnvironment || undefined}
             />}
             {page === 1 && <EnterServerAddress
                 onSubmit={(serverAddress) => {
@@ -154,7 +176,16 @@ export const useLoginCommand = (yargs: Argv) => {
             })
         },
         async function (args) {
-            const environment = args.environment as string | undefined;
+            let environment = args.environment as string | undefined;
+            
+            // If no environment specified, try to use current environment
+            if (!environment || environment === 'default') {
+                const currentEnv = await getCurrentEnvironmentFromCredentials();
+                if (currentEnv) {
+                    environment = currentEnv;
+                }
+            }
+            
             render(<LoginComponent environment={environment}/>);
         },
     )

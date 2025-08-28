@@ -7,7 +7,7 @@ import {loadCredentials} from "../credentials/autoload.ts";
 import EnvironmentIntroduction from "./pages/env/EnvironmentIntroduction.tsx";
 import EnvironmentStatus from "./pages/env/EnvironmentStatus.tsx";
 import fs from "node:fs";
-import {sanitizeEnvironmentName, validateEnvironmentName} from "../utils/environment.ts";
+import {sanitizeEnvironmentName, validateEnvironmentName, switchToEnvironment} from "../utils/environment.ts";
 
 type EnvironmentComponentProps = {
     environment: string;
@@ -52,18 +52,8 @@ function EnvironmentComponent({environment}: EnvironmentComponentProps) {
                 const response = await heimdellClient.auth.login();
                 if (response.statusCode >= 200 && response.statusCode <= 299) {
                     try {
-                        const environmentDir = sanitizedEnvironment ?
-                            `.heimdell/${sanitizedEnvironment}` :
-                            ".heimdell";
-
-                        if (fs.existsSync(".heimdell/credentials.json")) {
-                            try {
-                                fs.mkdirSync(".heimdell/.temp", { recursive: true });
-                            } catch (_) {}
-                            fs.copyFileSync(`.heimdell/credentials.json`, ".heimdell/.temp/credentials.json.bak");
-                        }
-
-                        fs.copyFileSync(`${environmentDir}/credentials.json`, `.heimdell/credentials.json`);
+                        // Switch to the environment using copy-based approach
+                        await switchToEnvironment(sanitizedEnvironment);
 
                         // Just appreciate the animation and smoothness of Ink a little bit.
                         setTimeout(() => {
@@ -97,7 +87,7 @@ function EnvironmentComponent({environment}: EnvironmentComponentProps) {
             />}
             {(page === 0 && credentials != null) && <EnvironmentIntroduction
                 onConfirm={() => setPage(1)}
-                environment={sanitizedEnvironment}
+                environment={sanitizedEnvironment || ''}
                 credentials={credentials}
             />}
             {page === 1 && <EnvironmentStatus 

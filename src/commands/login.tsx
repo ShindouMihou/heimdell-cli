@@ -28,6 +28,7 @@ function LoginComponent({environment}: LoginComponentProps) {
 
     const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
     const [error, setError] = useState<string | null>(null);
+    const [symlinkInfo, setSymlinkInfo] = useState<{usingSymlinks: boolean; environment: string} | undefined>();
 
     const sanitizedEnvironment = sanitizeEnvironmentName(environment);
 
@@ -80,20 +81,11 @@ function LoginComponent({environment}: LoginComponentProps) {
                             const mainCredentialsPath = ".heimdell/credentials.json";
                             const usingSymlinks = createSymlink(envCredentialsPath, mainCredentialsPath);
                             
-                            if (!usingSymlinks) {
-                                console.warn("\n⚠️  Note: Using file copy instead of symlinks due to system limitations.");
-                                console.warn("   For real-time credential sync, enable Developer Mode on Windows or use a Unix system.");
-                                console.warn("   With file copy mode:");
-                                console.warn("   • Edit credentials in .heimdell/" + sanitizedEnvironment + "/credentials.json");
-                                console.warn("   • Changes require running 'heimdall env " + sanitizedEnvironment + "' to become active");
-                                console.warn("   • Avoid editing .heimdell/credentials.json directly as changes will be lost");
-                            } else {
-                                console.log("\n✅ Login successful with real-time credential sync enabled");
-                                console.log("   You can edit credentials in either location:");
-                                console.log("   • .heimdell/credentials.json (main file)");  
-                                console.log("   • .heimdell/" + sanitizedEnvironment + "/credentials.json (environment file)");
-                                console.log("   Changes to either file are immediately reflected in both locations");
-                            }
+                            // Store symlink info for UI display
+                            setSymlinkInfo({
+                                usingSymlinks,
+                                environment: sanitizedEnvironment
+                            });
                         } else {
                             // For default environment, save directly to main file without environment field
                             const defaultCredentials = {
@@ -164,7 +156,7 @@ function LoginComponent({environment}: LoginComponentProps) {
                     setPage(6);
                 }}
             />}
-            {page === 6 && <LoginStatus status={status} error={error}/>}
+            {page === 6 && <LoginStatus status={status} error={error} symlinkInfo={symlinkInfo}/>}
         </Border>
     )
 }

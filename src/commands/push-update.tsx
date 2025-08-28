@@ -14,9 +14,10 @@ import PushUpdateCheckups from "./pages/push-update/PushUpdateCheckups.tsx";
 import PushUpdatePushProgress from "./pages/push-update/PushUpdatePushProgress.tsx";
 
 function PushUpdateCommand(
-    { targetVersion, note }: {
+    { targetVersion, note, autoYes = false }: {
         targetVersion: string,
-        note: string | null
+        note: string | null,
+        autoYes: boolean
     }
 )  {
     const [page, setPage] = useState(0);
@@ -43,9 +44,16 @@ function PushUpdateCommand(
     return (
         <>
             {page === 0 && (
-                <PushUpdateWarning onConfirm={() => {
-                    setPage(1)
-                }}/>
+                <PushUpdateWarning
+                    onConfirm={() => {
+                        if (autoYes) {
+                            setPage(2);
+                            return;
+                        }
+
+                        setPage(1)
+                    }}
+                />
             )}
             {page === 1 && (
                 <PushUpdatePreviewTasks
@@ -59,6 +67,7 @@ function PushUpdateCommand(
                 <PushUpdatePreTask
                     key={`pre-task-${currentCommand}`}
                     command={commands[currentCommand]!}
+                    autoYes={autoYes}
                     onComplete={() => {
                         if (currentCommand < commands.length - 1) {
                             setCurrentCommand(prev => prev + 1);
@@ -102,6 +111,15 @@ export const usePushUpdateCommand = (yargs: Argv) => {
                 type: 'string',
                 describe: 'A note for this bundle, e.g. "Bug fixes and performance improvements"'
             })
+            yargs.option({
+                'yes': {
+                    describe: "Automatic yes to prompts; assume \"yes\" as answer to all prompts and run non-interactively. " +
+                        "This won't apply to the final step which uploads the bundle to Heimdell as a safety measure.",
+                    type:  "boolean",
+                    alias: "y",
+                    default: false
+                }
+            })
             yargs.check((argv) => {
                 if (!argv.targetVersion) {
                     throw new Error('You must provide a target version for the update.');
@@ -125,10 +143,12 @@ export const usePushUpdateCommand = (yargs: Argv) => {
                 return;
             }
 
+            const autoYes = args.yes as boolean;
             render(
                 <PushUpdateCommand
                     targetVersion={targetVersion}
                     note={note}
+                    autoYes={autoYes}
                 />
             )
         },

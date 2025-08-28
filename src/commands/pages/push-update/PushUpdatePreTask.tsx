@@ -11,11 +11,12 @@ const MAX_LOG_LINES = 5;
 
 type PushUpdatePreTaskProps = {
     command: Command,
-    onComplete: () => void | Promise<void>
+    onComplete: () => void | Promise<void>,
+    autoYes: boolean
 };
 
 export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
-    const [status, setStatus] = useState<"ask-permission" | "running" | "done" | "error" | "killed">("ask-permission");
+    const [status, setStatus] = useState<"ask-permission" | "running" | "done" | "error" | "killed">(props.autoYes ? "running" : "ask-permission");
     const [log, setLogs] = useState<string[]>([]);
     const [error, setError] = useState<string | null>(null);
     const childProcessRef = useRef<ChildProcessWithoutNullStreams | null>(null);
@@ -77,6 +78,10 @@ export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
                     if (code === 0) {
                         setLogs(prevLogs => [...prevLogs, "Command completed successfully."].slice(-MAX_LOG_LINES));
                         setStatus("done");
+
+                        if (props.autoYes) {
+                            handleCompletionConfirm();
+                        }
                     } else {
                         const exitMessage = `Command exited with ${code !== null ? `code ${code}` : `signal ${signal}`}`;
                         setError(exitMessage);
@@ -152,7 +157,7 @@ export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
 
     if (platformSpecificCommand == null) {
         return (
-            <Border borderColor={"red"} width={"40%"}>
+            <Border borderColor={"red"} width={"60%"}>
                 <Text color={"magentaBright"} bold={true}>UNSUPPORTED OPERATING SYSTEM</Text>
                 <Text italic={true}>
                     This command is unsupported for your operating system. Please try again on a supported operating system (Linux, Windows, macOS).
@@ -169,7 +174,7 @@ export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
                         status === "killed" ? "yellow" :
                             status === "error" ? "red" : "blue"
                 }
-                width={"40%"}
+                width={"60%"}
             >
                 <Box gap={1}>
                     {status === "running" && <Spinner/>}
@@ -237,7 +242,7 @@ export default function PushUpdatePreTask(props: PushUpdatePreTaskProps) {
     }
 
     return (
-        <Border borderColor={"blue"} width={"40%"}>
+        <Border borderColor={"blue"} width={"60%"}>
             <Text color={"magentaBright"} bold={true}>PERMISSION TO RUN COMMAND</Text>
             <Text italic={true}>
                 Heimdell wants to run the following command ({os.platform()} variant) to prepare the update:

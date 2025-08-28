@@ -127,7 +127,7 @@ export default function PushUpdatePushProgress(props: {
                     status === "running" ? "yellow" :
                         status === "error" ? "red" : "blue"
             }
-            width={"40%"}
+            width={"60%"}
         >
             <Box gap={1}>
                 {status === "running" && <Spinner/>}

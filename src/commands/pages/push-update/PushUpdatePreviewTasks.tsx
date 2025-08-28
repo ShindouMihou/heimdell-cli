@@ -10,7 +10,7 @@ export default function PushUpdatePreviewTasks(props: {
 }) {
 
     return (
-        <Border borderColor={"blue"} width={"40%"}>
+        <Border borderColor={"blue"} width={"60%"}>
             <Text color={"magentaBright"} bold={true}>TASK LIST</Text>
             <Text italic={true}>
                 Heimdell will perform the following tasks before pushing the update:

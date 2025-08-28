@@ -65,6 +65,10 @@ Then you can use the following commands:
 # Preview checks and push a new update bundle
 heimdell push-update <version>
 
+# If you trust us to run the commands (except pushing the update to Heimdell)
+# automatically without your confirmation, use:
+heimdell push-update <version> --yes
+
 # List bundles on the server
 heimdell list-bundles
 

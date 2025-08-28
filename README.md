@@ -14,6 +14,8 @@ Your app checks for updates; the server returns metadata and assets prepared by 
 ## 🚧 Project Status
 
 > Heimdell is currently under development.
+> These issues or limitations are only on Windows due to the different mechanism of their
+> ZIP command.
 
 Known limitations being worked on:
 

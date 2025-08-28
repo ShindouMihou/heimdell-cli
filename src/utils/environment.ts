@@ -2,19 +2,29 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-export const sanitizeEnvironmentName = (environment?: string): string | null => {
-    if (!environment) return null;
-    return environment.replace(/[^a-zA-Z0-9_]/g, '');
-};
+export function sanitizeEnvironmentName(environment: string | undefined): string {
+    if (!environment) return '';
+    
+    return environment
+        .toLowerCase()
+        .replaceAll(" ", "_")
+        .replaceAll(/[^a-z0-9_]/g, "");
+}
 
-export const validateEnvironmentName = (environment: string): void => {
-    if (!environment || environment.trim() === '') {
-        throw new Error('Environment name cannot be empty');
+export function validateEnvironmentName(environment: string | undefined): void {
+    if (!environment || environment.length === 0) {
+        throw new Error("The environment name cannot be empty. Please provide a valid environment name.");
     }
-    if (!/^[a-zA-Z0-9_]+$/.test(environment)) {
-        throw new Error('Environment name can only contain letters, numbers, and underscores');
+    
+    if (environment.length > 30) {
+        throw new Error("The environment name is too long. Please keep it under 30 characters.");
     }
-};
+    
+    const sanitized = sanitizeEnvironmentName(environment);
+    if (!sanitized || sanitized.length === 0) {
+        throw new Error("The environment name is invalid. Please use only letters, numbers, and underscores.");
+    }
+}
 
 /**
  * Get the temp directory path and ensure it exists

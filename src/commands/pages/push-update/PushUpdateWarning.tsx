@@ -13,7 +13,7 @@ export default function PushUpdateWarning(props: { onConfirm: () => void }) {
                 back to a previous version is not possible.
             </Text>
             <Text color={"redBright"} bold={true}>
-                You are pushing an update to {credentials?.environment ?? "Default"} environment.
+                You are pushing an update to {globalThis.credentials?.environment ?? "Default"} environment.
             </Text>
             <Text italic={true}>
                 Please ensure that you have met these following conditions:

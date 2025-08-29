@@ -13,13 +13,14 @@ import {useRuntime} from "../hooks/useRuntime.ts";
 import PushUpdateCheckups from "./pages/push-update/PushUpdateCheckups.tsx";
 import PushUpdatePushProgress from "./pages/push-update/PushUpdatePushProgress.tsx";
 
-function PushUpdateCommand(
-    { targetVersion, note, autoYes = false }: {
-        targetVersion: string,
-        note: string | null,
-        autoYes: boolean
-    }
-)  {
+type PushUpdateCommandProps = {
+    targetVersion: string,
+    note: string | null,
+    autoYes: boolean,
+    skipNpmInstall?: boolean,
+};
+
+function PushUpdateCommand({targetVersion, note, autoYes = false, skipNpmInstall = false }: PushUpdateCommandProps)  {
     const [page, setPage] = useState(0);
 
     const {runtime, useRuntimeCommand} = useRuntime();
@@ -28,7 +29,7 @@ function PushUpdateCommand(
     const bundleIosCommand = useRuntimeCommand(bundleIosScript);
 
     const commands = useMemo(() => {
-        const cmds: Command[] = [installPackagesCommand];
+        const cmds: Command[] = skipNpmInstall ? [] : [installPackagesCommand];
         const platforms = globalThis.credentials!.platforms;
         if (platforms.includes("android")) {
             cmds.push(bundleAndroidCommand);
@@ -120,6 +121,24 @@ export const usePushUpdateCommand = (yargs: Argv) => {
                     default: false
                 }
             })
+            yargs.option({
+                'skip-npm-install': {
+                    describe: "Skip the npm install step. Use this if you are sure that your node_modules are up to date.",
+                    type:  "boolean",
+                    default: false,
+                    alias: "sni"
+                }
+            })
+            yargs.option({
+                'auto': {
+                    describe: "Run the command in fully automatic mode. This will skip all prompts and run non-interactively. " +
+                        "This will not run npm install and will assume that your node_modules are up to date. Like the --yes flag, " +
+                        "this won't apply to the final step which uploads the bundle to Heimdell as a safety measure.",
+                    type: "boolean",
+                    default: false,
+                    alias: "a"
+                }
+            })
             yargs.check((argv) => {
                 if (!argv.targetVersion) {
                     throw new Error('You must provide a target version for the update.');
@@ -143,12 +162,15 @@ export const usePushUpdateCommand = (yargs: Argv) => {
                 return;
             }
 
-            const autoYes = args.yes as boolean;
+            const auto = args.auto as boolean;
+            const autoYes = args.yes as boolean || auto;
+            const skipNpmInstall = args['skip-npm-install'] as boolean || auto;
             render(
                 <PushUpdateCommand
                     targetVersion={targetVersion}
                     note={note}
                     autoYes={autoYes}
+                    skipNpmInstall={skipNpmInstall}
                 />
             )
         },

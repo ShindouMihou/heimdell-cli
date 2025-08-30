@@ -6,6 +6,7 @@ import {usePushUpdateCommand} from "./commands/push-update.tsx";
 import {useListBundlesCommand} from "./commands/list-bundles.tsx";
 import {useRollbackCommand} from "./commands/rollback.tsx";
 import {useEnvCommand} from "./commands/env.tsx";
+import {useHashCommand} from "./commands/hash.ts";
 
 const cli = yargs()
     .scriptName("heimdell")
@@ -17,7 +18,8 @@ const cli = yargs()
     usePushUpdateCommand,
     useListBundlesCommand,
     useRollbackCommand,
-    useEnvCommand
+    useEnvCommand,
+    useHashCommand
 ] as ((yargs: Argv) => void)[])
     .forEach(e => e(cli));
 

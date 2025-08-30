@@ -9,6 +9,8 @@
   },
   "scripts": {
     "start": "bun run src/index.ts",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
     "build:darwin-arm64": "bun build --compile src/index.ts --outfile dist/heimdell-darwin-arm64 --define 'process.env.DEV=\"false\"'",
     "build:darwin-x64": "bun build --compile --target bun-darwin-x64 src/index.ts --outfile dist/heimdell-darwin-x64 --define 'process.env.DEV=\"false\"'",
     "build:linux-x64": "bun build --compile --target bun-linux-x64 src/index.ts --outfile dist/heimdell-linux-x64 --define 'process.env.DEV=\"false\"'",

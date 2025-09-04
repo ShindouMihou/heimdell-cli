@@ -5,6 +5,9 @@ import {useEffect, useMemo, useRef, useState} from "react";
 import {createHeimdellClient} from "../../../api/client.ts";
 import type {Bundle} from "../../../api/types/bundle.ts";
 import {uploadBundleFile} from "../../../api/resources/v1/upload.ts";
+import {checkSentryAvailability, uploadSourceMapToSentry} from "../../../utils/sentry.ts";
+import fs from "node:fs";
+import path from "node:path";
 
 type ChecklistStatus = "idle" | "running" | "ok" | "not-good" | "error";
 export default function PushUpdatePushProgress(props: {
@@ -76,6 +79,58 @@ export default function PushUpdatePushProgress(props: {
             }
         }
     ]);
+
+    useEffect(() => {
+        checkSentryAvailability(process.cwd()).then((available) => {
+            if (available && checklist.length === 2) {
+                setChecklist(prev => [
+                    ...prev,
+                    {
+                        name: "Upload sourcemaps to Sentry",
+                        status: "idle" as ChecklistStatus,
+                        task: async () => {
+                            const platforms = globalThis.credentials!.platforms;
+                            const isAndroid = platforms.includes("android");
+                            const isIos = platforms.includes("ios");
+                            const projectRoot = process.cwd();
+
+                            try {
+                                if (isAndroid && fs.existsSync("dist/sentry/index.android.bundle") && fs.existsSync("dist/sentry/index.android.bundle.map")) {
+                                    await uploadSourceMapToSentry({
+                                        bundlePath: path.resolve("dist/sentry/index.android.bundle"),
+                                        sourceMapPath: path.resolve("dist/sentry/index.android.bundle.map"),
+                                        release: props.targetVersion,
+                                        platform: "android",
+                                        projectRoot
+                                    });
+                                }
+
+                                if (isIos && fs.existsSync("dist/sentry/main.ios.jsbundle") && fs.existsSync("dist/sentry/main.ios.jsbundle.map")) {
+                                    await uploadSourceMapToSentry({
+                                        bundlePath: path.resolve("dist/sentry/main.ios.jsbundle"),
+                                        sourceMapPath: path.resolve("dist/sentry/main.ios.jsbundle.map"),
+                                        release: props.targetVersion,
+                                        platform: "ios",
+                                        projectRoot
+                                    });
+                                }
+
+                                // Clean up Sentry files
+                                if (fs.existsSync("dist/sentry")) {
+                                    fs.rmSync("dist/sentry", { recursive: true });
+                                }
+                            } catch (e) {
+                                setError("Failed to upload sourcemaps to Sentry: " + (e instanceof Error ? e.message : String(e)));
+                                return "error" as ChecklistStatus;
+                            }
+
+                            return "ok" as ChecklistStatus;
+                        }
+                    }
+                ]);
+            }
+        });
+    }, []);
 
     const status = useMemo(() => {
         if (checklist.every(item => item.status === "ok")) {

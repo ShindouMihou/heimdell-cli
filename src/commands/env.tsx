@@ -7,7 +7,8 @@ import {loadCredentials} from "../credentials/autoload.ts";
 import EnvironmentIntroduction from "./pages/env/EnvironmentIntroduction.tsx";
 import EnvironmentStatus from "./pages/env/EnvironmentStatus.tsx";
 import {sanitizeEnvironmentName, validateEnvironmentName, switchToEnvironment} from "../utils/environment.ts";
-import {executeProtectedCommand} from "../utils/protectedCommand.tsx";
+import {isCredentialsEncrypted, decryptCredentialsFile} from "../utils/encryption.ts";
+import EncryptionKeyPrompt from "../components/EncryptionKeyPrompt.tsx";
 
 type EnvironmentComponentProps = {
     environment: string;
@@ -19,27 +20,59 @@ function EnvironmentComponent({environment}: EnvironmentComponentProps) {
     const [error, setError] = useState<string | null>(null);
     const [loadingMessage, setLoadingMessage] = useState<string | undefined>();
     const [successMessage, setSuccessMessage] = useState<string | undefined>();
+    const [encryptionError, setEncryptionError] = useState<string | undefined>();
+    const [needsEncryptionKey, setNeedsEncryptionKey] = useState(false);
 
     const sanitizedEnvironment = sanitizeEnvironmentName(environment);
+    const credentialsPath = `.heimdell/${sanitizedEnvironment}/credentials.json`;
 
     const [credentials, setCredentials] = useState<typeof globalThis.credentials>();
 
-    useEffect(() => {
-        async function load() {
-            setStatus("loading");
-            setLoadingMessage("Loading credentials...");
-            try {
-                const creds = await loadCredentials(`.heimdell/${sanitizedEnvironment}/credentials.json`);
+    const loadCredentialsWithKey = async (encryptionKey?: string) => {
+        setStatus("loading");
+        setLoadingMessage("Loading credentials...");
+        setError(null);
+        setEncryptionError(undefined);
+        
+        try {
+            // Check if credentials are encrypted
+            if (isCredentialsEncrypted(credentialsPath)) {
+                if (!encryptionKey) {
+                    setNeedsEncryptionKey(true);
+                    setStatus("idle");
+                    return;
+                }
+                
+                // Try to decrypt with provided key
+                const credentialsData = decryptCredentialsFile(credentialsPath, encryptionKey);
+                // Set global credentials for client to use
+                globalThis.credentials = credentialsData;
+                setCredentials(credentialsData);
+                setNeedsEncryptionKey(false);
+            } else {
+                // Load unencrypted credentials
+                const creds = await loadCredentials(credentialsPath);
                 setCredentials(creds);
-            } catch (error: Error | any) {
-                setError(typeof error === "string" ? error : error.message)
-            } finally {
-                setStatus("idle");
             }
+        } catch (error: Error | any) {
+            if (error instanceof Error && error.message.includes('Invalid encryption key')) {
+                setEncryptionError("Invalid encryption key. Please try again.");
+                setNeedsEncryptionKey(true);
+            } else {
+                setError(typeof error === "string" ? error : error.message);
+            }
+        } finally {
+            setStatus("idle");
         }
+    };
 
-        load();
+    useEffect(() => {
+        loadCredentialsWithKey();
     }, []);
+
+    const handleEncryptionKeySubmit = (key: string) => {
+        loadCredentialsWithKey(key);
+    };
 
     useEffect(() => {
         if (page === 1) {
@@ -76,6 +109,16 @@ function EnvironmentComponent({environment}: EnvironmentComponentProps) {
             switchEnvironment();
         }
     }, [page]);
+
+    if (needsEncryptionKey) {
+        return (
+            <EncryptionKeyPrompt
+                onSubmit={handleEncryptionKeySubmit}
+                message={`The credentials for environment "${sanitizedEnvironment}" are encrypted. Please enter the encryption key for this environment:`}
+                error={encryptionError}
+            />
+        );
+    }
 
     return (
         <Border>
@@ -132,9 +175,7 @@ export const useEnvCommand = (yargs: Argv) => {
                 return;
             }
             
-            await executeProtectedCommand('env', () => {
-                render(<EnvironmentComponent environment={environment}/>);
-            });
+            render(<EnvironmentComponent environment={environment}/>);
         },
     )
 }

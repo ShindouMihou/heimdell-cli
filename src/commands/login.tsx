@@ -10,9 +10,12 @@ import LoginStatus from "./pages/login/LoginStatus.tsx";
 import Border from "../components/Border.tsx";
 import LoginEnterProjectTag from "./pages/login/LoginEnterProjectTag.tsx";
 import LoginSelectPlatforms from "./pages/login/LoginSelectPlatforms.tsx";
+import LoginEnterEncryptionKey from "./pages/login/LoginEnterEncryptionKey.tsx";
 import fs from "node:fs";
 import {sanitizeEnvironmentName, validateEnvironmentName, createSymlink} from "../utils/environment.ts";
 import {getCurrentEnvironmentFromCredentials} from "../credentials/autoload.ts";
+import {encryptData} from "../utils/encryption.ts";
+import {SessionManager} from "../utils/session.ts";
 
 type LoginComponentProps = {
     environment?: string;
@@ -25,6 +28,7 @@ function LoginComponent({environment}: LoginComponentProps) {
     const [password, setPassword] = useState("");
     const [tag, setTag] = useState("");
     const [platforms, setPlatforms] = useState<("android" | "ios")[]>([]);
+    const [encryptionKey, setEncryptionKey] = useState("");
 
     const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
     const [error, setError] = useState<string | null>(null);
@@ -49,57 +53,9 @@ function LoginComponent({environment}: LoginComponentProps) {
                 const heimdellClient = createHeimdellClient();
                 const response = await heimdellClient.auth.login();
                 if (response.statusCode >= 200 && response.statusCode <= 299) {
-                    try {
-                        const credentialsData = {
-                            baseUrl: serverAddress,
-                            username,
-                            password,
-                            tag,
-                            platforms,
-                            environment: sanitizedEnvironment || undefined
-                        };
-
-                        const gitignoreContents = [
-                            "credentials.json",
-                            ".temp"
-                        ].join("\n");
-
-                        const environmentDir = sanitizedEnvironment ?
-                            `.heimdell/${sanitizedEnvironment}` :
-                            ".heimdell";
-
-                        // Ensure environment directory exists
-                        fs.mkdirSync(environmentDir, { recursive: true });
-
-                        if (sanitizedEnvironment) {
-                            // Save credentials to environment-specific file
-                            await Bun.file(`${environmentDir}/credentials.json`).write(JSON.stringify(credentialsData, null, 2));
-                            
-                            // Create symlink from environment file to main credentials file for real-time sync
-                            const envCredentialsPath = `${environmentDir}/credentials.json`;
-                            const mainCredentialsPath = ".heimdell/credentials.json";
-                            createSymlink(envCredentialsPath, mainCredentialsPath);
-                        } else {
-                            // For default environment, save directly to main file without environment field
-                            const defaultCredentials = {
-                                baseUrl: serverAddress,
-                                username,
-                                password,
-                                tag,
-                                platforms
-                            };
-                            await Bun.file(".heimdell/credentials.json").write(JSON.stringify(defaultCredentials, null, 2));
-                        }
-                        
-                        await Bun.file(".heimdell/.gitignore").write(gitignoreContents);
-
-                        // Just appreciate the animation and smoothness of Ink a little bit.
-                        setTimeout(() => setStatus("ok"), 1_000);
-                    } catch (e) {
-                        setStatus("error");
-                        setError(`Failed to save credentials: ${e instanceof Error ? e.message : String(e)}`);
-                        return;
-                    }
+                    // Successful login, now get encryption key
+                    setStatus("ok");
+                    setTimeout(() => setPage(7), 1_000);
                     return;
                 }
 
@@ -109,6 +65,69 @@ function LoginComponent({environment}: LoginComponentProps) {
                 }, 1_000);
             }
             login();
+        }
+    }, [page]);
+
+    useEffect(() => {
+        if (page === 8) {
+            async function saveEncryptedCredentials() {
+                setStatus("loading");
+                setError(null);
+
+                try {
+                    const credentialsData = {
+                        baseUrl: serverAddress,
+                        username,
+                        password,
+                        tag,
+                        platforms,
+                        environment: sanitizedEnvironment || undefined
+                    };
+
+                    // Encrypt the credentials
+                    const credentialsJson = JSON.stringify(credentialsData, null, 2);
+                    const encryptedCredentials = encryptData(credentialsJson, encryptionKey);
+
+                    const gitignoreContents = [
+                        "credentials.json",
+                        ".temp"
+                    ].join("\n");
+
+                    const environmentDir = sanitizedEnvironment ?
+                        `.heimdell/${sanitizedEnvironment}` :
+                        ".heimdell";
+
+                    // Ensure environment directory exists
+                    fs.mkdirSync(environmentDir, { recursive: true });
+
+                    if (sanitizedEnvironment) {
+                        // Save encrypted credentials to environment-specific file
+                        await Bun.file(`${environmentDir}/credentials.json`).write(JSON.stringify(encryptedCredentials, null, 2));
+                        
+                        // Create symlink from environment file to main credentials file for real-time sync
+                        const envCredentialsPath = `${environmentDir}/credentials.json`;
+                        const mainCredentialsPath = ".heimdell/credentials.json";
+                        createSymlink(envCredentialsPath, mainCredentialsPath);
+                    } else {
+                        // For default environment, save directly to main file
+                        await Bun.file(".heimdell/credentials.json").write(JSON.stringify(encryptedCredentials, null, 2));
+                    }
+                    
+                    await Bun.file(".heimdell/.gitignore").write(gitignoreContents);
+
+                    // Store encryption key in session
+                    const sessionManager = SessionManager.getInstance();
+                    sessionManager.setEncryptionKey(encryptionKey);
+
+                    // Just appreciate the animation and smoothness of Ink a little bit.
+                    setTimeout(() => setStatus("ok"), 1_000);
+                } catch (e) {
+                    setStatus("error");
+                    setError(`Failed to save encrypted credentials: ${e instanceof Error ? e.message : String(e)}`);
+                    return;
+                }
+            }
+            saveEncryptedCredentials();
         }
     }, [page]);
 
@@ -150,6 +169,13 @@ function LoginComponent({environment}: LoginComponentProps) {
                 }}
             />}
             {page === 6 && <LoginStatus status={status} error={error}/>}
+            {page === 7 && <LoginEnterEncryptionKey
+                onSubmit={(key) => {
+                    setEncryptionKey(key);
+                    setPage(8);
+                }}
+            />}
+            {page === 8 && <LoginStatus status={status} error={error}/>}
         </Border>
     )
 }

@@ -1,8 +1,8 @@
 "use strict";
 import type {Argv} from "yargs";
 import {Box, render, Text} from "ink";
-import {autoloadCredentials} from "../credentials/autoload.ts";
 import UnauthenticatedAlert from "../components/UnauthenticatedAlert.tsx";
+import {executeProtectedCommand} from "../utils/protectedCommand.tsx";
 import {createHeimdellClient} from "../api/client.ts";
 import {useMemo} from "react";
 import {createQueryEngine} from "@client.ts/react";
@@ -50,13 +50,14 @@ export const useListBundlesCommand = (yargs: Argv) => {
         'List all bundles that were reserved in Heimdell.',
         () => {},
         async function () {
-            await autoloadCredentials();
-            if (globalThis.credentials == null) {
-                render(<UnauthenticatedAlert/>)
-                return;
-            }
+            await executeProtectedCommand('list-bundles', () => {
+                if (globalThis.credentials == null) {
+                    render(<UnauthenticatedAlert/>)
+                    return;
+                }
 
-            render(<ListBundlesCommand/>);
+                render(<ListBundlesCommand/>);
+            });
         },
     )
 }

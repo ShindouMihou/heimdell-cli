@@ -1,7 +1,7 @@
 import type {Argv} from "yargs";
 import {render} from "ink";
-import {autoloadCredentials} from "../credentials/autoload.ts";
 import UnauthenticatedAlert from "../components/UnauthenticatedAlert.tsx";
+import {executeProtectedCommand} from "../utils/protectedCommand.tsx";
 import {useMemo, useState} from "react";
 import PushUpdateWarning from "./pages/push-update/PushUpdateWarning.tsx";
 import PushUpdatePreviewTasks from "./pages/push-update/PushUpdatePreviewTasks.tsx";
@@ -156,23 +156,25 @@ export const usePushUpdateCommand = (yargs: Argv) => {
         async function (args) {
             const targetVersion = args.targetVersion as string;
             const note = args.note as string;
-            await autoloadCredentials();
-            if (globalThis.credentials == null) {
-                render(<UnauthenticatedAlert/>)
-                return;
-            }
+            
+            await executeProtectedCommand('push-update', async () => {
+                if (globalThis.credentials == null) {
+                    render(<UnauthenticatedAlert/>)
+                    return;
+                }
 
-            const auto = args.auto as boolean;
-            const autoYes = args.yes as boolean || auto;
-            const skipNpmInstall = args['skip-npm-install'] as boolean || auto;
-            render(
-                <PushUpdateCommand
-                    targetVersion={targetVersion}
-                    note={note}
-                    autoYes={autoYes}
-                    skipNpmInstall={skipNpmInstall}
-                />
-            )
+                const auto = args.auto as boolean;
+                const autoYes = args.yes as boolean || auto;
+                const skipNpmInstall = args['skip-npm-install'] as boolean || auto;
+                render(
+                    <PushUpdateCommand
+                        targetVersion={targetVersion}
+                        note={note}
+                        autoYes={autoYes}
+                        skipNpmInstall={skipNpmInstall}
+                    />
+                )
+            });
         },
     )
 }

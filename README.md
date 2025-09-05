@@ -2,6 +2,16 @@
 
 **Heimdell CLI** is the companion command-line tool for Heimdell, enabling fast over-the-air (OTA) updates for React Native apps via [react-native-ota-hot-update](https://github.com/vantuan88291/react-native-ota-hot-update).
 
+## 🚀 Features
+- **Fast Bundling**: Utilizes Bun for rapid JavaScript bundling.
+- **Easy Integration**: Seamlessly works with `react-native-ota-hot-update` for runtime updates.
+- **Multi-Environment Support**: Manage different environments (e.g., staging, production) with ease.
+- **Version Control**: Push, list, and roll back to previous bundles effortlessly.
+- **Cross-Platform**: Works on macOS and Linux.
+- **Secure**: Credentials are stored locally and is encrypted.
+- **Interactive CLI**: User-friendly prompts guide you through the update process.
+- **Audit Logging**: Keep track of all updates and changes by sending logs to a Slack channel, or your designated reporting method. [`view more`](https://github.com/ShindouMihou/heimdell).
+
 ## ⚙️ How It Works
 
 Heimdell operates as a two-component system:
@@ -17,7 +27,7 @@ Your app checks for updates; the server returns metadata and assets prepared by 
 > These issues or limitations are only on Windows due to the different mechanism of their
 > ZIP command.
 
-Known limitations being worked on:
+Known limitations (for Windows) being worked on:
 
 - Image and asset references may not be fully resolved in the current bundling flow.
 - Incomplete support for apps using the new React Native architecture.

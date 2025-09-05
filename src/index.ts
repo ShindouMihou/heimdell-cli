@@ -7,6 +7,7 @@ import {useListBundlesCommand} from "./commands/list-bundles.tsx";
 import {useRollbackCommand} from "./commands/rollback.tsx";
 import {useEnvCommand} from "./commands/env.tsx";
 import {useHashCommand} from "./commands/hash.ts";
+import {useEncryptCredentialsCommand} from "./commands/encrypt-credentials.tsx";
 
 const cli = yargs()
     .scriptName("heimdell")
@@ -19,7 +20,8 @@ const cli = yargs()
     useListBundlesCommand,
     useRollbackCommand,
     useEnvCommand,
-    useHashCommand
+    useHashCommand,
+    useEncryptCredentialsCommand
 ] as ((yargs: Argv) => void)[])
     .forEach(e => e(cli));
 

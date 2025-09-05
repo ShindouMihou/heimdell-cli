@@ -6,8 +6,8 @@ import Border from "../components/Border.tsx";
 import {loadCredentials} from "../credentials/autoload.ts";
 import EnvironmentIntroduction from "./pages/env/EnvironmentIntroduction.tsx";
 import EnvironmentStatus from "./pages/env/EnvironmentStatus.tsx";
-import fs from "node:fs";
 import {sanitizeEnvironmentName, validateEnvironmentName, switchToEnvironment} from "../utils/environment.ts";
+import {executeProtectedCommand} from "../utils/protectedCommand.tsx";
 
 type EnvironmentComponentProps = {
     environment: string;
@@ -131,7 +131,10 @@ export const useEnvCommand = (yargs: Argv) => {
                 console.error(`No credentials found for environment "${sanitizedEnvironment}". Please make sure you have logged in to this environment before switching to it. \nYou can use heimdell login -e "${environment}" to log in.`);
                 return;
             }
-            render(<EnvironmentComponent environment={environment}/>);
+            
+            await executeProtectedCommand('env', () => {
+                render(<EnvironmentComponent environment={environment}/>);
+            });
         },
     )
 }

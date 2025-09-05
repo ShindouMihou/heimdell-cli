@@ -1,8 +1,8 @@
 import Border from "../components/Border.tsx";
 import type {Argv} from "yargs";
 import {Box, render, Text} from "ink";
-import {autoloadCredentials} from "../credentials/autoload.ts";
 import UnauthenticatedAlert from "../components/UnauthenticatedAlert.tsx";
+import {executeProtectedCommand} from "../utils/protectedCommand.tsx";
 import {useEffect, useState} from "react";
 import {ConfirmInput, Spinner, UnorderedList} from "@inkjs/ui";
 import {createHeimdellClient} from "../api/client.ts";
@@ -140,14 +140,15 @@ export const useRollbackCommand = (yargs: Argv) => {
         'Rolls back the latest update.',
         () => {},
         async function () {
-            await autoloadCredentials();
-            if (globalThis.credentials == null) {
-                render(<UnauthenticatedAlert/>)
-                return;
-            }
+            await executeProtectedCommand('rollback', () => {
+                if (globalThis.credentials == null) {
+                    render(<UnauthenticatedAlert/>)
+                    return;
+                }
 
-            const tag = globalThis.credentials.tag;
-            render(<RollbackCommand tag={tag}/>);
+                const tag = globalThis.credentials.tag;
+                render(<RollbackCommand tag={tag}/>);
+            });
         },
     )
 }

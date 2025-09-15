@@ -12,6 +12,7 @@ import {installPackagesScript} from "../scripts/package-manager.ts";
 import {useRuntime} from "../hooks/useRuntime.ts";
 import PushUpdateCheckups from "./pages/push-update/PushUpdateCheckups.tsx";
 import PushUpdatePushProgress from "./pages/push-update/PushUpdatePushProgress.tsx";
+import {validateRuleset} from "../rulesets/executable.ts";
 
 type PushUpdateCommandProps = {
     targetVersion: string,
@@ -160,6 +161,11 @@ export const usePushUpdateCommand = (yargs: Argv) => {
             await executeProtectedCommand('push-update', async () => {
                 if (globalThis.credentials == null) {
                     render(<UnauthenticatedAlert/>)
+                    return;
+                }
+
+                const rulesetOk = await validateRuleset();
+                if (!rulesetOk) {
                     return;
                 }
 

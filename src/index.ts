@@ -8,6 +8,7 @@ import {useRollbackCommand} from "./commands/rollback.tsx";
 import {useEnvCommand} from "./commands/env.tsx";
 import {useHashCommand} from "./commands/hash.ts";
 import {useEncryptCredentialsCommand} from "./commands/encrypt-credentials.tsx";
+import {useRulesetCreateCommand} from "./commands/ruleset-create.ts";
 
 const cli = yargs()
     .scriptName("heimdell")
@@ -21,7 +22,8 @@ const cli = yargs()
     useRollbackCommand,
     useEnvCommand,
     useHashCommand,
-    useEncryptCredentialsCommand
+    useEncryptCredentialsCommand,
+    useRulesetCreateCommand
 ] as ((yargs: Argv) => void)[])
     .forEach(e => e(cli));
 

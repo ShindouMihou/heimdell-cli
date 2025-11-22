@@ -28,16 +28,35 @@ export function validateEnvironmentName(environment: string | undefined): void {
 
 /**
  * Get the temp directory path and ensure it exists
+ * Uses project-local .heimdell/.temp to avoid cross-device operations
  */
 const getTempDir = (): string => {
-    const heimdellDir = path.join(os.homedir(), '.heimdell');
-    const tempDir = path.join(heimdellDir, '.temp');
-    
+    const tempDir = path.join('.heimdell', '.temp');
+
     if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
     }
-    
+
     return tempDir;
+};
+
+/**
+ * Safely move a file, handling cross-device operations
+ * Uses copy-then-delete pattern instead of rename to work across filesystems
+ */
+const moveFileSafe = (source: string, target: string): void => {
+    try {
+        // Try rename first (fastest if on same filesystem)
+        fs.renameSync(source, target);
+    } catch (error: any) {
+        // If rename fails with EXDEV (cross-device error), fall back to copy-delete
+        if (error.code === 'EXDEV') {
+            fs.copyFileSync(source, target);
+            fs.unlinkSync(source);
+        } else {
+            throw error;
+        }
+    }
 };
 
 /**
@@ -45,8 +64,7 @@ const getTempDir = (): string => {
  */
 const getBackupPath = (originalPath: string): string => {
     const tempDir = getTempDir();
-    const relativePath = path.relative(os.homedir(), originalPath);
-    const backupName = relativePath.replace(/[\/\\]/g, '_') + '.bak';
+    const backupName = originalPath.replace(/[\/\\]/g, '_') + '.bak';
     return path.join(tempDir, backupName);
 };
 
@@ -67,7 +85,7 @@ export const createSymlink = (source: string, target: string): boolean => {
                 if (fs.existsSync(backupPath)) {
                     fs.unlinkSync(backupPath);
                 }
-                fs.renameSync(target, backupPath);
+                moveFileSafe(target, backupPath);
             }
         }
         
@@ -126,7 +144,7 @@ export const switchToEnvironment = async (environment: string | null): Promise<v
                     fs.unlinkSync(mainCredentialsPath);
                     const backupPath = getBackupPath(mainCredentialsPath);
                     if (fs.existsSync(backupPath)) {
-                        fs.renameSync(backupPath, mainCredentialsPath);
+                        moveFileSafe(backupPath, mainCredentialsPath);
                         const content = await Bun.file(mainCredentialsPath).text();
                         const credentials = JSON.parse(content);
                         delete credentials.environment;

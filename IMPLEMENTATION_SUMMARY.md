@@ -105,15 +105,27 @@ dist/
 3. **Debug ID copy**:
    - Uses `@sentry/react-native/scripts/copy-debugid.js`
    - Ensures proper symbolication
-4. **Upload via Sentry CLI**:
+4. **Create and upload to Sentry release**:
    ```bash
+   # Create release
+   npx @sentry/cli releases new <version> \
+     --org <org> \
+     --project <project>
+   
+   # Upload source maps
    npx @sentry/cli sourcemaps upload \
-     --debug-id-reference \
+     --release <version> \
+     --dist <version> \
      --org <org> \
      --project <project> \
      --strip-prefix <project-root> \
      <bundle-path> \
      <composed-map-path>
+   
+   # Finalize release
+   npx @sentry/cli releases finalize <version> \
+     --org <org> \
+     --project <project>
    ```
 5. **Cleanup**: Removes temporary files
 

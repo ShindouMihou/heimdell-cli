@@ -142,11 +142,12 @@ When you run `heimdell push-update <version>`, the CLI automatically:
    - Combines Metro + Hermes source maps into final map
    - Copies debug IDs using `@sentry/react-native/scripts/copy-debugid.js`
 
-4. **Uploads to Sentry**:
-   - Uses `@sentry/cli sourcemaps upload`
-   - Includes `--debug-id-reference` for proper symbolication
+4. **Creates Sentry release and uploads**:
+   - Creates a Sentry release: `sentry-cli releases new <version>`
+   - Uploads source maps with `@sentry/cli sourcemaps upload`
+   - Includes `--release` and `--dist` flags to associate with release
    - Strips project root prefix for cleaner paths
-   - Associates with release version
+   - Finalizes the release: `sentry-cli releases finalize <version>`
 
 5. **Cleans up temporary files**:
    - Removes `dist/sentry/` directory after upload
@@ -181,14 +182,17 @@ $ heimdell push-update 1.2.3
 │ Parsed config from sentry.properties:          │
 │   org=my-org, project=my-app                   │
 │                                                │
+│ Creating Sentry release: 1.2.3                 │
 │ Sentry CLI command:                            │
 │   npx @sentry/cli sourcemaps upload            │
-│     --debug-id-reference                       │
+│     --release 1.2.3                            │
+│     --dist 1.2.3                               │
 │     --org my-org                               │
 │     --project my-app                           │
 │     --strip-prefix /path/to/project            │
 │     dist/sentry/index.android.bundle           │
 │     dist/sentry/index.android.bundle.composed.map
+│ Finalizing Sentry release: 1.2.3              │
 │                                                │
 │ • Upload sourcemaps to Sentry: ✅ OK           │
 │                                                │

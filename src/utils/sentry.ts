@@ -110,7 +110,7 @@ async function runCommand(command: string, args: string[], cwd: string, env?: Re
 }
 
 export async function uploadSourceMapToSentry(options: SentryUploadOptions): Promise<void> {
-    const { bundlePath, sourceMapPath, platform, projectRoot } = options;
+    const { bundlePath, sourceMapPath, release, platform, projectRoot } = options;
     
     // Step 0: Set up platform-specific sentry.properties symlink if needed
     const rootSentryProperties = path.join(projectRoot, "sentry.properties");
@@ -191,12 +191,13 @@ export async function uploadSourceMapToSentry(options: SentryUploadOptions): Pro
             fs.copyFileSync(sourceMapPath, finalMapPath);
         }
 
-        // Step 5: Upload to Sentry using the composed source map
+        // Step 5: Create Sentry release and upload source maps
         const sentryArgs = [
             "@sentry/cli",
             "sourcemaps",
             "upload",
-            "--debug-id-reference",
+            "--release", release,
+            "--dist", release,
             "--strip-prefix", projectRoot,
             bundlePath,
             finalMapPath
@@ -236,7 +237,41 @@ export async function uploadSourceMapToSentry(options: SentryUploadOptions): Pro
         
         console.log(`Sentry CLI command: npx ${sentryArgs.join(' ')}`);
 
+        // Create the release first
+        const createReleaseArgs = ["@sentry/cli", "releases", "new", release];
+        if (sentryOrg) {
+            createReleaseArgs.push("--org", sentryOrg);
+        }
+        if (sentryProject) {
+            createReleaseArgs.push("--project", sentryProject);
+        }
+        
+        try {
+            console.log(`Creating Sentry release: ${release}`);
+            await runCommand("npx", createReleaseArgs, projectRoot, cliEnv);
+        } catch (error) {
+            // Release might already exist, which is fine - continue with upload
+            console.log(`Release ${release} may already exist, continuing with upload...`);
+        }
+
+        // Upload source maps
         await runCommand("npx", sentryArgs, projectRoot, cliEnv);
+
+        // Finalize the release
+        const finalizeReleaseArgs = ["@sentry/cli", "releases", "finalize", release];
+        if (sentryOrg) {
+            finalizeReleaseArgs.push("--org", sentryOrg);
+        }
+        if (sentryProject) {
+            finalizeReleaseArgs.push("--project", sentryProject);
+        }
+        
+        try {
+            console.log(`Finalizing Sentry release: ${release}`);
+            await runCommand("npx", finalizeReleaseArgs, projectRoot, cliEnv);
+        } catch (error) {
+            console.log(`Warning: Could not finalize release ${release}: ${error instanceof Error ? error.message : String(error)}`);
+        }
 
         // Clean up the final composed source map
         if (fs.existsSync(finalMapPath)) {

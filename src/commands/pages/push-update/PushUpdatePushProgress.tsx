@@ -68,8 +68,13 @@ export default function PushUpdatePushProgress(props: {
                     );
 
                     // Clean up local bundle files
-                    Bun.file("dist/hermes.ios.hbc.zip").delete();
-                    Bun.file("dist/hermes.android.hbc.zip").delete();
+                    if (isAndroid) {
+                        Bun.file("dist/hermes.android.hbc.zip").delete();
+                    }
+
+                    if (isIos) {
+                        Bun.file("dist/hermes.ios.hbc.zip").delete();
+                    }
                 } catch (e) {
                     setError("Failed to upload bundle files: " + (e instanceof Error ? e.message : String(e)));
                     return "error" as ChecklistStatus;

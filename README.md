@@ -12,6 +12,7 @@
 - **Secure**: Credentials are stored locally and is encrypted.
 - **Interactive CLI**: User-friendly prompts guide you through the update process.
 - **Audit Logging**: Keep track of all updates and changes by sending logs to a Slack channel, or your designated reporting method. [`view more`](https://github.com/ShindouMihou/heimdell).
+- **Sentry Integration**: Automatic source map uploads for proper error symbolication in Hermes bytecode bundles. [`setup guide`](SENTRY_SETUP.md)
 
 ## ⚙️ How It Works
 
@@ -153,11 +154,48 @@ ruleset file, you can refer to the structure below:
 
 You can then save the file and Heimdell will automatically check for the ruleset file when you run the `push-update` command.
 
+### 🐛 Sentry Source Map Integration
+
+Heimdell CLI automatically uploads source maps to Sentry when deploying OTA updates, enabling proper stack trace symbolication for errors in production.
+
+**Quick Start**:
+1. Install dependencies in your React Native project:
+   ```bash
+   npm install --save @sentry/react-native
+   npm install --save-dev @sentry/cli
+   ```
+
+2. Configure Sentry (choose one method):
+   - **Environment variables** (recommended for CI/CD):
+     ```bash
+     export SENTRY_ORG="your-org-slug"
+     export SENTRY_PROJECT="your-project-slug"
+     export SENTRY_AUTH_TOKEN="your-auth-token"
+     ```
+   
+   - **sentry.properties file** in project root:
+     ```properties
+     defaults.org=your-org-slug
+     defaults.project=your-project-slug
+     auth.token=your-auth-token
+     ```
+
+3. Push an update:
+   ```bash
+   heimdell push-update 1.0.0
+   ```
+
+That's it! Source maps will be automatically uploaded to Sentry during the push-update workflow.
+
+**📖 For detailed setup, troubleshooting, and advanced configuration, see [SENTRY_SETUP.md](SENTRY_SETUP.md)**
+
 Notes:
 - This CLI is Bun-specific and uses Bun APIs.
 - Ensure your React Native project is set up correctly for bundling.
+- Sentry source map upload is automatic and optional - if not configured, it will be gracefully skipped.
 
 ## 📚 Resources
 
 - [`react-native-ota-hot-update`](https://github.com/vantuan88291/react-native-ota-hot-update) – OTA runtime update handler for React Native
 - [`heimdell` backend server](https://github.com/ShindouMihou/heimdell) – stores and serves bundles prepared by this CLI
+- [Sentry Setup Guide](SENTRY_SETUP.md) – Comprehensive guide for Sentry source map integration

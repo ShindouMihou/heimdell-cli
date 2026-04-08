@@ -144,18 +144,14 @@ export async function uploadSourceMapToSentry(options: SentryUploadOptions): Pro
         // We need to compose the source maps properly for Hermes
         
         const bundleDir = path.dirname(bundlePath);
+        const bundleBasename = path.basename(bundlePath);
         const bundleName = path.basename(bundlePath, path.extname(bundlePath));
         const packagerMapPath = path.join(bundleDir, `${bundleName}.packager.map`);
-        
-        // Handle different naming patterns for Hermes source maps
-        let hermesMapPath: string;
-        if (bundleName.includes("android")) {
-            hermesMapPath = path.join(bundleDir, `${bundleName}.hbc.map`);
-        } else {
-            // For iOS, the pattern is main.ios.jsbundle -> main.ios.jsbundle.hbc.map
-            hermesMapPath = path.join(bundleDir, `${bundleName}.hbc.map`);
-        }
-        
+
+        // Hermes map files are named <full-bundle-name>.hbc.map
+        // e.g. index.android.bundle.hbc.map, main.ios.jsbundle.hbc.map
+        const hermesMapPath = path.join(bundleDir, `${bundleBasename}.hbc.map`);
+
         const finalMapPath = path.join(bundleDir, `${bundleName}.composed.map`);
 
         // Step 2: Check if we have the Hermes bytecode source map
@@ -176,12 +172,31 @@ export async function uploadSourceMapToSentry(options: SentryUploadOptions): Pro
             ], projectRoot);
             
             // Step 4: Copy debug ID using Sentry's script
-            await runCommand("node", [
-                "node_modules/@sentry/react-native/scripts/copy-debugid.js",
-                packagerMapPath,
-                finalMapPath
-            ], projectRoot);
-            
+            try {
+                await runCommand("node", [
+                    "node_modules/@sentry/react-native/scripts/copy-debugid.js",
+                    packagerMapPath,
+                    finalMapPath
+                ], projectRoot);
+            } catch {
+                console.log("copy-debugid.js failed or not found, will attempt fallback injection");
+            }
+
+            // Step 4b: Verify debug ID exists in composed map, inject from bundle if missing
+            const composedMapContent = JSON.parse(fs.readFileSync(finalMapPath, "utf8"));
+            if (!composedMapContent.debug_id && !composedMapContent.debugId) {
+                const jsCode = fs.readFileSync(bundlePath, "utf8");
+                const debugIdMatch = jsCode.match(/\/\/# debugId=([a-f0-9-]+)/);
+                if (debugIdMatch) {
+                    composedMapContent.debug_id = debugIdMatch[1];
+                    composedMapContent.debugId = debugIdMatch[1];
+                    fs.writeFileSync(finalMapPath, JSON.stringify(composedMapContent));
+                    console.log(`Injected debug ID ${debugIdMatch[1]} into composed sourcemap`);
+                } else {
+                    console.log("Warning: No debug ID found in bundle or sourcemap. Sentry may not associate this sourcemap correctly.");
+                }
+            }
+
             // Clean up temporary files
             if (fs.existsSync(packagerMapPath)) {
                 fs.unlinkSync(packagerMapPath);

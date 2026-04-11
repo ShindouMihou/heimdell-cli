@@ -7,4 +7,5 @@ declare module globalThis {
         platforms: ("android"|"ios")[];
         environment?: string;
     } | undefined;
+    var ciMode: boolean;
 }

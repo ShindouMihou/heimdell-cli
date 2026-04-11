@@ -7,11 +7,16 @@ const mockUseListBundlesCommand = mock(() => {});
 const mockUseRollbackCommand = mock(() => {});
 const mockUseEnvCommand = mock(() => {});
 const mockUseHashCommand = mock(() => {});
+const mockUseEncryptCredentialsCommand = mock(() => {});
+const mockUseRulesetCreateCommand = mock(() => {});
 
 // Mock yargs
 const mockYargs = {
   scriptName: mock(() => mockYargs),
   usage: mock(() => mockYargs),
+  option: mock(() => mockYargs),
+  middleware: mock(() => mockYargs),
+  command: mock(() => mockYargs),
   help: mock(() => mockYargs),
   parse: mock(() => {})
 };
@@ -25,6 +30,8 @@ mock.module("./commands/list-bundles.tsx", () => ({ useListBundlesCommand: mockU
 mock.module("./commands/rollback.tsx", () => ({ useRollbackCommand: mockUseRollbackCommand }));
 mock.module("./commands/env.tsx", () => ({ useEnvCommand: mockUseEnvCommand }));
 mock.module("./commands/hash.ts", () => ({ useHashCommand: mockUseHashCommand }));
+mock.module("./commands/encrypt-credentials.tsx", () => ({ useEncryptCredentialsCommand: mockUseEncryptCredentialsCommand }));
+mock.module("./commands/ruleset-create.ts", () => ({ useRulesetCreateCommand: mockUseRulesetCreateCommand }));
 mock.module("yargs", () => ({ default: mockYargsFunction }));
 mock.module("yargs/helpers", () => ({ hideBin: mock((argv: string[]) => argv.slice(2)) }));
 

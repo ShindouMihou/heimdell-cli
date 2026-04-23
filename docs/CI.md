@@ -566,14 +566,37 @@ jobs:
 
 ### `HEIMDELL_CONFIG`
 
-Store as a GitHub Actions secret in your React Native project repository:
+The easiest way to generate this value is the built-in `export:config` command, which decrypts your locally stored credentials and prints a CI-ready JSON payload:
 
 ```bash
-# Generate the JSON config
+# Compact JSON (copy directly into a GitHub secret)
+heimdell export:config production
+
+# Encrypted credentials: pass the key explicitly
+heimdell export:config production --key "$MY_KEY"
+
+# Or via env var (useful for scripts)
+HEIMDELL_ENCRYPTION_KEY=mysecret heimdell export:config production
+
+# Pretty-print for inspection
+heimdell export:config production --pretty
+
+# Emit a shell export statement (for .env files or direct sourcing)
+heimdell export:config production --export >> .env.ci
+```
+
+**Exit codes:**
+- `0` success
+- `1` missing environment, missing fields, or missing key in non-TTY mode
+- `2` invalid encryption key
+
+Alternatively, construct the JSON manually:
+
+```bash
 echo '{"baseUrl":"https://heimdell.example.com","username":"deploy","password":"secret","tag":"my-app","platforms":["android","ios"]}' | jq .
 ```
 
-Go to your repository's **Settings > Secrets and variables > Actions** and create a secret named `HEIMDELL_CONFIG`.
+Go to your repository's **Settings > Secrets and variables > Actions** and create a secret named `HEIMDELL_CONFIG` with the JSON value.
 
 ### Slack Notifications (Optional)
 

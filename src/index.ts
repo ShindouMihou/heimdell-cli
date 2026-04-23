@@ -9,6 +9,7 @@ import {useEnvCommand} from "./commands/env.tsx";
 import {useHashCommand} from "./commands/hash.ts";
 import {useEncryptCredentialsCommand} from "./commands/encrypt-credentials.tsx";
 import {useRulesetCreateCommand} from "./commands/ruleset-create.ts";
+import {useExportConfigCommand} from "./commands/export-config.ts";
 
 const cli = yargs()
     .scriptName("heimdell")
@@ -35,7 +36,8 @@ const cli = yargs()
     useEnvCommand,
     useHashCommand,
     useEncryptCredentialsCommand,
-    useRulesetCreateCommand
+    useRulesetCreateCommand,
+    useExportConfigCommand
 ] as ((yargs: Argv) => void)[])
     .forEach(e => e(cli));
 

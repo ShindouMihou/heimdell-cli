@@ -66,6 +66,9 @@ heimdell push-update <version> --note "Release notes" --use-ci
 |---|---|---|
 | `version` | Yes | Semantic version for the bundle (e.g. `1.2.3`) |
 | `--note` | No | Release note attached to the bundle |
+| `--force-upgrade` / `-fu` | No | Flag this bundle as a **mandatory** upgrade. Users on any older bundle for this version+tag will be forced to update before they can continue using the app. Use only for critical fixes (security, breaking backend changes, severe crashes). |
+
+When `--force-upgrade` is set, a warning is emitted on stderr before the reserve step so the mandate is unmistakable in CI logs.
 
 ### `list-bundles`
 
@@ -86,6 +89,28 @@ heimdell rollback --use-ci
 ```
 
 Returns the disposed bundle information on success.
+
+### `set-force-upgrade`
+
+Marks an existing bundle as a mandatory force-upgrade (or clears the flag). Useful when a bundle that was already pushed turns out to be critical — no need to re-push.
+
+```bash
+# Enable force-upgrade on a bundle
+heimdell set-force-upgrade <bundleId> --use-ci
+
+# Clear the flag
+heimdell set-force-upgrade <bundleId> --disable --use-ci
+```
+
+**Arguments:**
+| Argument | Required | Description |
+|---|---|---|
+| `bundleId` | Yes | The ID of the bundle to flag (same value returned by `push-update` as `bundle_id`). |
+| `--disable` / `-d` | No | Clear the force-upgrade flag instead of enabling it. |
+
+**Semantics:** the flag is **sticky** — once a bundle is marked as force-upgrade, every user on an older bundle for the same version+tag is required to update. This mandate cannot be cleared by a subsequent non-mandatory push; it remains in effect until either (a) the client has upgraded past the flagged bundle, or (b) the flag is explicitly cleared with `--disable`.
+
+The result object includes the updated bundle and a `force_upgrade: boolean` field reflecting the new state.
 
 ---
 
@@ -174,11 +199,12 @@ On successful `push-update`, the following outputs are written to `$GITHUB_OUTPU
 | Code | Meaning |
 |---|---|
 | `0` | Success |
-| `1` | Configuration error (missing/invalid `HEIMDELL_CONFIG`, unsupported command) |
+| `1` | Configuration error (missing/invalid `HEIMDELL_CONFIG`, unsupported command, missing required argument) |
 | `2` | API error (authentication failure, server unreachable, list/rollback failure) |
 | `3` | Build error (bundling failed, Hermes compilation failed) |
 | `4` | Validation error (ruleset failed, bundle checkup failed) |
 | `5` | Upload error (reserve failed, bundle upload failed) |
+| `6` | Force-upgrade error (set-force-upgrade failed; bundle not found or server-side error) |
 
 ---
 
@@ -486,6 +512,96 @@ jobs:
             }
 ```
 
+### Push a Mandatory (Force-Upgrade) Update
+
+Use this when shipping a critical fix that every user MUST install before they can keep using the app. The mobile client reads `forceUpgrade: true` from the update-check response and is expected to show a non-dismissible upgrade screen.
+
+```yaml
+name: OTA Force-Upgrade Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Bundle version (semver)"
+        required: true
+      note:
+        description: "Why is this upgrade mandatory?"
+        required: true
+
+jobs:
+  deploy-ota:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Heimdell CLI
+        run: |
+          git clone --depth 1 https://github.com/ShindouMihou/heimdell-cli.git /tmp/heimdell-cli
+          cd /tmp/heimdell-cli && bun install && bun link
+
+      - name: Install project dependencies
+        run: bun install
+
+      - name: Push Force-Upgrade OTA Update
+        id: ota
+        run: |
+          heimdell push-update "${{ inputs.version }}" \
+            --note "${{ inputs.note }}" \
+            --force-upgrade \
+            --use-ci=parallel
+        env:
+          HEIMDELL_CONFIG: ${{ secrets.HEIMDELL_CONFIG }}
+```
+
+### Retroactively Flag an Existing Bundle as Force-Upgrade
+
+Use this when you already pushed a bundle and only afterwards realize it is critical.
+
+```yaml
+name: OTA Mark Force-Upgrade
+
+on:
+  workflow_dispatch:
+    inputs:
+      bundle_id:
+        description: "Bundle ID to flag as force-upgrade"
+        required: true
+
+jobs:
+  mark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Heimdell CLI
+        run: |
+          git clone --depth 1 https://github.com/ShindouMihou/heimdell-cli.git /tmp/heimdell-cli
+          cd /tmp/heimdell-cli && bun install && bun link
+
+      - name: Mark bundle as force-upgrade
+        run: heimdell set-force-upgrade "${{ inputs.bundle_id }}" --use-ci
+        env:
+          HEIMDELL_CONFIG: ${{ secrets.HEIMDELL_CONFIG }}
+```
+
+To clear the flag later, add `--disable`:
+
+```yaml
+      - name: Clear force-upgrade flag
+        run: heimdell set-force-upgrade "${{ inputs.bundle_id }}" --disable --use-ci
+        env:
+          HEIMDELL_CONFIG: ${{ secrets.HEIMDELL_CONFIG }}
+```
+
 ### Rollback with Slack
 
 ```yaml
@@ -632,6 +748,9 @@ Ruleset validation blocked the deployment. Check your `.heimdell/ruleset.json` r
 
 ### `RESERVE_FAILED` / `UPLOAD_FAILED` (exit code 5)
 Server-side failure during bundle reservation or upload. Verify your Heimdell server is reachable and credentials are valid.
+
+### `SET_FORCE_UPGRADE_FAILED` (exit code 6)
+The `set-force-upgrade` command failed. Common causes: the supplied `bundleId` does not exist on the server (verify against `heimdell list-bundles --use-ci`), the server rejected the request (auth failure — check credentials), or a network error. The JSON `error` event on stdout contains the server-side message.
 
 ### Timeout
 Commands have a 10-minute timeout. If bundling exceeds this, consider splitting platforms or optimizing your Metro configuration.

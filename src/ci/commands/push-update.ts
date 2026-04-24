@@ -36,8 +36,14 @@ export async function ciPushUpdate(
     targetVersion: string,
     note: string | null,
     reporter: CIReporter,
-    flags: CIFlags
+    flags: CIFlags,
+    forceUpgrade: boolean = false
 ): Promise<void> {
+    if (forceUpgrade) {
+        reporter.warning(
+            "force-upgrade flag is set — this bundle will be marked as a mandatory upgrade for all users on older bundles for this version+tag."
+        );
+    }
     const runtime = checkJsRuntime();
     const isAndroid = config.platforms.includes("android");
     const isIos = config.platforms.includes("ios");
@@ -93,6 +99,7 @@ export async function ciPushUpdate(
             version: targetVersion,
             tag: config.tag,
             note: note ?? undefined,
+            is_force_upgrade: forceUpgrade,
         });
 
         if (reserve.statusCode !== 200 || !reserve.data) {

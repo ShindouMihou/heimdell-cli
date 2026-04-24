@@ -3,12 +3,13 @@ import { CIReporter } from "./reporter.ts";
 import { ciPushUpdate } from "./commands/push-update.ts";
 import { ciListBundles } from "./commands/list-bundles.ts";
 import { ciRollback } from "./commands/rollback.ts";
+import { ciSetForceUpgrade } from "./commands/set-force-upgrade.ts";
 
 export type CIFlags = {
     parallel: boolean;
 };
 
-const SUPPORTED_COMMANDS = ["push-update", "list-bundles", "rollback"] as const;
+const SUPPORTED_COMMANDS = ["push-update", "list-bundles", "rollback", "set-force-upgrade"] as const;
 
 export function parseCIFlags(flagString: string): CIFlags {
     const parts = flagString.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -30,7 +31,8 @@ export async function executeCIMode(command: string, args: Record<string, unknow
                 process.exit(1);
             }
             const note = (args.note as string) || null;
-            await ciPushUpdate(config, targetVersion, note, reporter, flags);
+            const forceUpgrade = Boolean(args["force-upgrade"]);
+            await ciPushUpdate(config, targetVersion, note, reporter, flags, forceUpgrade);
             break;
         }
 
@@ -41,6 +43,17 @@ export async function executeCIMode(command: string, args: Record<string, unknow
         case "rollback":
             await ciRollback(config, reporter);
             break;
+
+        case "set-force-upgrade": {
+            const bundleId = args.bundleId as string;
+            if (!bundleId) {
+                reporter.failure("MISSING_ARG", "bundleId is required for set-force-upgrade");
+                process.exit(1);
+            }
+            const enabled = !(args.disable as boolean);
+            await ciSetForceUpgrade(config, bundleId, enabled, reporter);
+            break;
+        }
 
         default:
             reporter.failure(

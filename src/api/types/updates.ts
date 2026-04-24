@@ -1,6 +1,8 @@
 export type Update = {
     update?: {
-        download: string
+        download: string,
+        bundleId: string,
+        forceUpgrade: boolean,
     },
     error?: string
 }

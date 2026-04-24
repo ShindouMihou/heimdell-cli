@@ -3,7 +3,7 @@ import {ConfirmInput, UnorderedList} from "@inkjs/ui";
 import Border from "../../../components/Border.tsx";
 import credentials = globalThis.credentials;
 
-export default function PushUpdateWarning(props: { onConfirm: () => void }) {
+export default function PushUpdateWarning(props: { onConfirm: () => void, forceUpgrade?: boolean }) {
     return (
         <Border borderColor={"yellow"} width={"60%"}>
             <Text color={"redBright"} bold={true}>WARNING</Text>
@@ -15,6 +15,18 @@ export default function PushUpdateWarning(props: { onConfirm: () => void }) {
             <Text color={"redBright"} bold={true}>
                 You are pushing an update to {globalThis.credentials?.environment ?? "Default"} environment.
             </Text>
+            {props.forceUpgrade && (
+                <Box flexDirection={"column"} marginTop={1} marginBottom={1}>
+                    <Text color={"redBright"} bold={true}>
+                        ⚠ FORCE UPGRADE ACTIVE
+                    </Text>
+                    <Text italic={true} color={"redBright"}>
+                        This bundle will be flagged as a mandatory update. Every user on an older bundle
+                        for this version+tag will be forced to update before they can continue using the
+                        app. Use this only for critical fixes.
+                    </Text>
+                </Box>
+            )}
             <Text italic={true}>
                 Please ensure that you have met these following conditions:
             </Text>

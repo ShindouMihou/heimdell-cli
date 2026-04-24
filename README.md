@@ -8,7 +8,7 @@
 - **Multi-Environment Support**: Manage different environments (e.g., staging, production) with ease.
 - **Rulesets**: Define rules to prevent accidental deployments to the wrong environment.
 - **Version Control**: Push, list, and roll back to previous bundles effortlessly.
-- **Cross-Platform**: Works on macOS and Linux.
+- **Cross-Platform**: Works on macOS, Linux, and Windows.
 - **Secure**: Credentials are stored locally and is encrypted.
 - **Interactive CLI**: User-friendly prompts guide you through the update process.
 - **Audit Logging**: Keep track of all updates and changes by sending logs to a Slack channel, or your designated reporting method. [`view more`](https://github.com/ShindouMihou/heimdell).
@@ -33,22 +33,64 @@ Known limitations (for Windows) being worked on:
 - Image and asset references may not be fully resolved in the current bundling flow.
 - Incomplete support for apps using the new React Native architecture.
 
-## 🔧 Setup
+## 🔧 Installation
 
-> This CLI uses Bun as its runtime. Install Bun from https://bun.sh.
+### Quick Install
 
-### Option A: Download a Binary
+**macOS / Linux**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ShindouMihou/heimdell-cli/master/install.sh | bash
+```
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://raw.githubusercontent.com/ShindouMihou/heimdell-cli/master/install.ps1 | iex
+```
+
+The installer will:
+
+- Check for [Bun](https://bun.sh) and offer to install it if missing.
+- Clone this repository into `~/.heimdell/src` and build a self-contained `heimdell` binary for your platform via `bun build --compile`.
+- Install the binary to `~/.heimdell/bin/heimdell` (or `%USERPROFILE%\.heimdell\bin\heimdell.exe` on Windows).
+- Add that directory to your shell `PATH`.
+
+After install, open a new terminal (or `source ~/.zshrc`) and run `heimdell login` to get started.
+
+**Configuration:**
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `HEIMDELL_INSTALL` | `$HOME/.heimdell` | Install root |
+| `HEIMDELL_REF` | `master` | Git ref to install |
+| `HEIMDELL_REPO` | official GitHub URL | Override for forks or mirrors |
+| `HEIMDELL_YES` | unset | If `1`, skip all confirmations |
+
+Pass `--yes` / `-Yes` to the script for the same effect as `HEIMDELL_YES=1`.
+
+### Advanced / Manual Install
+
+<details>
+<summary>Download a prebuilt binary</summary>
 
 - Grab a prebuilt executable from GitHub Releases (tags starting with `v*`).
-- Place it on your PATH. On macOS/Linux, ensure it’s executable.
-- (LINUX/MAC) You may use the command `cp <downloaded-file> /usr/local/bin/heimdell` to copy it to a common location.
+- Place it on your `PATH`. On macOS/Linux, ensure it's executable.
+- (Linux/macOS) You may use the command `cp <downloaded-file> /usr/local/bin/heimdell` to copy it to a common location.
 
-### Option B: Build from Source
+</details>
+
+<details>
+<summary>Build from source</summary>
 
 ```bash
 bun install
 bun run build:all
 ```
+
+Output binaries land in `dist/`.
+
+</details>
 
 ## ▶️ Usage
 

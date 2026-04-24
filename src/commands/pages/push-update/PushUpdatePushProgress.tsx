@@ -13,6 +13,7 @@ type ChecklistStatus = "idle" | "running" | "ok" | "not-good" | "error";
 export default function PushUpdatePushProgress(props: {
     targetVersion: string,
     note: string | null,
+    forceUpgrade?: boolean,
     onComplete: () => void
 }) {
     const [error, setError] = useState<string | null>(null);
@@ -28,7 +29,8 @@ export default function PushUpdatePushProgress(props: {
                 const reserve = await client.bundles.reserve({
                     version: props.targetVersion,
                     tag: credentials.tag,
-                    note: props.note ?? undefined
+                    note: props.note ?? undefined,
+                    is_force_upgrade: props.forceUpgrade ?? false,
                 });
 
                 if (reserve.statusCode !== 200) {

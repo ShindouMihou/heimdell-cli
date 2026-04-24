@@ -5,6 +5,7 @@ import {useLoginCommand} from "./commands/login.tsx";
 import {usePushUpdateCommand} from "./commands/push-update.tsx";
 import {useListBundlesCommand} from "./commands/list-bundles.tsx";
 import {useRollbackCommand} from "./commands/rollback.tsx";
+import {useSetForceUpgradeCommand} from "./commands/set-force-upgrade.tsx";
 import {useEnvCommand} from "./commands/env.tsx";
 import {useHashCommand} from "./commands/hash.ts";
 import {useEncryptCredentialsCommand} from "./commands/encrypt-credentials.tsx";
@@ -33,6 +34,7 @@ const cli = yargs()
     usePushUpdateCommand,
     useListBundlesCommand,
     useRollbackCommand,
+    useSetForceUpgradeCommand,
     useEnvCommand,
     useHashCommand,
     useEncryptCredentialsCommand,

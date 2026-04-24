@@ -11,7 +11,8 @@ export const cliResource = createResource({
                 body: {
                     tag: payload.tag,
                     version: payload.version,
-                    note: payload.note
+                    note: payload.note,
+                    is_force_upgrade: payload.is_force_upgrade ?? false,
                 },
                 headers: {
                     "Content-Type": "application/json"
@@ -26,5 +27,18 @@ export const cliResource = createResource({
                 route: `GET /bundles/${tag}/list`,
             }
         }),
+        setForceUpgrade: createRoute<{ message: string, bundle: Bundle }>()
+            .dynamic((payload: { bundleId: string, enabled: boolean }) => {
+                return {
+                    route: `POST /bundle/${payload.bundleId}/force-upgrade`,
+                    body: {
+                        enabled: payload.enabled,
+                    },
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    encoder: JSON.stringify
+                }
+            }),
     }
 })

@@ -5,6 +5,7 @@ export type Bundle = {
     note?: string;
     author: string;
     is_disposed: 0 | 1;
+    is_force_upgrade: 0 | 1;
     created_at: string;
     error?: string;
 }

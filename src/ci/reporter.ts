@@ -19,6 +19,7 @@ export type CIResult = {
     platforms?: string[];
     bundles?: unknown[];
     disposed_bundle?: unknown;
+    force_upgrade?: boolean;
     error?: { code: string; message: string; details?: string };
 };
 

@@ -19,9 +19,10 @@ type PushUpdateCommandProps = {
     note: string | null,
     autoYes: boolean,
     skipNpmInstall?: boolean,
+    forceUpgrade?: boolean,
 };
 
-function PushUpdateCommand({targetVersion, note, autoYes = false, skipNpmInstall = false }: PushUpdateCommandProps)  {
+function PushUpdateCommand({targetVersion, note, autoYes = false, skipNpmInstall = false, forceUpgrade = false }: PushUpdateCommandProps)  {
     const [page, setPage] = useState(0);
 
     const {runtime, useRuntimeCommand} = useRuntime();
@@ -47,6 +48,7 @@ function PushUpdateCommand({targetVersion, note, autoYes = false, skipNpmInstall
         <>
             {page === 0 && (
                 <PushUpdateWarning
+                    forceUpgrade={forceUpgrade}
                     onConfirm={() => {
                         if (autoYes) {
                             setPage(2);
@@ -88,6 +90,7 @@ function PushUpdateCommand({targetVersion, note, autoYes = false, skipNpmInstall
                 <PushUpdatePushProgress
                     targetVersion={targetVersion}
                     note={note}
+                    forceUpgrade={forceUpgrade}
                     onComplete={() => {}}
                 />
             )}
@@ -140,6 +143,16 @@ export const usePushUpdateCommand = (yargs: Argv) => {
                     alias: "a"
                 }
             })
+            yargs.option({
+                'force-upgrade': {
+                    describe: "Flag this bundle as a mandatory upgrade. Users on any older bundle for this version+tag " +
+                        "will be forced to update before they can continue using the app. Use only for critical fixes " +
+                        "(security patches, breaking backend changes, severe crashes).",
+                    type: "boolean",
+                    default: false,
+                    alias: "fu"
+                }
+            })
             yargs.check((argv) => {
                 if (!argv.targetVersion) {
                     throw new Error('You must provide a target version for the update.');
@@ -172,12 +185,14 @@ export const usePushUpdateCommand = (yargs: Argv) => {
                 const auto = args.auto as boolean;
                 const autoYes = args.yes as boolean || auto;
                 const skipNpmInstall = args['skip-npm-install'] as boolean || auto;
+                const forceUpgrade = args['force-upgrade'] as boolean;
                 render(
                     <PushUpdateCommand
                         targetVersion={targetVersion}
                         note={note}
                         autoYes={autoYes}
                         skipNpmInstall={skipNpmInstall}
+                        forceUpgrade={forceUpgrade}
                     />
                 )
             });
